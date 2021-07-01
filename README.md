@@ -1,1 +1,2 @@
-# scarpet
+# CommandLeo's Scarpet App Repository
+
