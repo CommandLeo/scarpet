@@ -149,7 +149,7 @@ insert(mode, table, position) -> (
         loop(inventory_size(b), inventory_set(b, _, 1, 'white_shulker_box', {'BlockEntityTag' -> {'Items' -> map(range(27), item = rand(items); {'Slot' -> _i, 'id' -> item, 'Count' -> if(mode == 'shulker_full', 64, floor(rand(stack_limit(item) - 1)) + 1)})}})),
         loop(if(mode~'single', 1, inventory_size(b)), item = rand(items); inventory_set(b, _, if(mode == 'random' || mode == 'single_random', rand(stack_limit(item) - 1) + 1, mode == 'single', 1, stack_limit(item)), item))
     );
-    print(player(), format('f » ', 'g Table ', str('#9B59B6 %s ', table), str('g was inserted in %s at ' + pos(b), block(b))));
+    print(player(), format('f » ', 'g Table ', str('#9B59B6 %s ', table), str('g was inserted in %s at ' + b, block(b))));
 );
 
 exportDatapack(mode, table) -> (
