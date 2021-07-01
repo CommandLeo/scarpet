@@ -142,7 +142,7 @@ info(table) -> (
 
 insert(mode, table, position) -> (
     if(list_files('', 'text')~table == null, exit(print('§cThat table doesn\'t exist')));
-    b = position || query(player(), 'trace', 5, 'blocks');
+    b = position || pos(query(player(), 'trace', 5, 'blocks'));
     if(!b || inventory_has_items(b) == null, exit(print('§cThat block is not a container!')));
     items = readTable(table);
     if(mode~'shulker',
