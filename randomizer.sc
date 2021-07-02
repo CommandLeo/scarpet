@@ -88,8 +88,8 @@ create(name, item_string) -> (
 );
 
 createFromContainer(name, position) -> (
-    b = position || query(player(), 'trace', 5, 'blocks');
-    if(!b || inventory_has_items(b) == null, exit(print('§cThat block is not a container!')));
+    b = position || player()~'trace';
+    if(!b || inventory_has_items(b) == null || b~'uuid', exit(print('§cThat block is not a container!')));
     if(!inventory_has_items(b), exit(print('§cCant\'t create a table from an empty container')));
     items = {};
     loop(inventory_size(b), item = inventory_get(b, _):0; if(item, items += item));
@@ -142,8 +142,9 @@ info(table) -> (
 
 insert(mode, table, position) -> (
     if(list_files('', 'text')~table == null, exit(print('§cThat table doesn\'t exist')));
-    b = position || pos(query(player(), 'trace', 5, 'blocks'));
-    if(!b || inventory_has_items(b) == null, exit(print('§cThat block is not a container!')));
+    b = position || player()~'trace';
+    if(!b || inventory_has_items(b) == null || b~'uuid', exit(print('§cThat block is not a container!')));
+    b = pos(b);
     items = readTable(table);
     if(mode~'shulker',
         loop(inventory_size(b), inventory_set(b, _, 1, 'white_shulker_box', {'BlockEntityTag' -> {'Items' -> map(range(27), item = rand(items); {'Slot' -> _i, 'id' -> item, 'Count' -> if(mode == 'shulker_full', 64, floor(rand(stack_limit(item) - 1)) + 1)})}})),
