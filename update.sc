@@ -14,7 +14,8 @@ __config() -> {
         'end' -> {
             'type' -> 'pos'
         }
-    }
+    },
+    'scope' -> 'player'
 };
 
 updateBlock(start, end, block) -> {

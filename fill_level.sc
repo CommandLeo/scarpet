@@ -16,7 +16,7 @@ __config() -> {
             'max' -> 897
         }
     },
-    'scope' -> 'global'
+    'scope' -> 'player'
 };
 
 help() -> (
