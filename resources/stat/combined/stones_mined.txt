@@ -1,0 +1,9 @@
+Stones Mined
+mined
+stone
+andesite
+granite
+diorite
+deepslate
+tuff
+calcite
