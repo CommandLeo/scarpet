@@ -1,0 +1,18 @@
+Ores Mined
+mined
+coal_ore
+deepslate_coal_ore
+iron_ore
+deepslate_iron_ore
+copper_ore
+deepslate_copper_ore
+gold_ore
+deepslate_copper_ore
+redstone_ore
+deepslate_redstone_ore
+emerald_ore
+deepslate_emerald_ore
+lapis_ore
+deepslate_lapis_ore
+diamond_ore
+deepslate_diamond_ore
