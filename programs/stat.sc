@@ -62,8 +62,8 @@ global_help_pages = [
         '%color% /%app_name% settings default_dig <dig> ', 'f ｜ ', 'g Sets the default dig type ', 'f *', '^g For server operators only', '  \n',
         '%color% /%app_name% settings offline_digs [on|off|toggle] ', 'f ｜ ', 'g Includes or excludes digs of offline whitelisted players in the scoreboard', ' \n',
         '%color% /%app_name% settings dig_display [on|off|toggle] ', 'f ｜ ', 'g Shows or hides digs in the player list footer', ' \n',
-        '%color% /%app_name% settings dig_display_color <hex_color> ', 'f ｜ ', 'g Changes the color of digs display for yourself (leave empty to reset)', ' \n',
-        '%color% /%app_name% settings stat_color <hex_color> ', 'f ｜ ', 'g Changes the color of the scoreboard name for everyone (leave empty to reset) ', 'f *', '^g For server operators only', ' \n'
+        '%color% /%app_name% settings dig_display_color <hex_color> ', 'f ｜ ', 'g Changes the color of digs display for yourself; leave empty to reset', ' \n',
+        '%color% /%app_name% settings stat_color <hex_color> ', 'f ｜ ', 'g Changes the color of the scoreboard name for everyone; leave empty to reset ', 'f *', '^g For server operators only', ' \n'
     ],
     [
         '%color% /%app_name% settings combined_stats list ', 'f ｜ ', 'g Lists combined statistics ', ' \n',
@@ -316,7 +316,7 @@ parseCombinedFile(name) -> (
     file = read_file('combined/' + name, 'text');
     display_name = file:0;
     category = if(length(file) > 1, file:1);
-    delete(file, 0); delete(file, 0);
+    loop(2, delete(file, 0));
     return([display_name, category, file]);
 );
 
@@ -382,7 +382,9 @@ help(page) -> (
     length = length(global_help_pages);
     if(page < 1 || page > length, _error('Invalid page number'));
     page = page - 1;
-    texts = ['fs ' + ' ' * 80, ' \n', ...global_help_pages:page, 'fs ' + ' ' * 31, '  ', 'fb «', '^g Previous page', '!/%app_name% help ' + ((page - 1) % length + 1), str('g \ Page %d/%d ', page + 1, length), 'fb »', '^g Next page', '!/%app_name% help ' + ((page + 1) % length + 1), '  ', 'fs ' + ' ' * 31];
+    previous_page = (page - 1) % length + 1;
+    next_page = ((page + 1) % length + 1);
+    texts = ['fs ' + ' ' * 80, ' \n', ...global_help_pages:page, 'fs ' + ' ' * 31, '  ', 'fb «', '^g Previous page', '!/%app_name% help ' + previous_page, str('g \ Page %d/%d ', page + 1, length), 'fb »', '^g Next page', '!/%app_name% help ' + next_page, '  ', 'fs ' + ' ' * 31];
     replacement_map = {'%app_name%' -> global_app_name, '%color%' -> '#FFEE44', '%default_dig%' -> global_default_dig};
     print(format(map(texts, reduce(pairs(replacement_map), replace(_a, ..._), _))));
 );
