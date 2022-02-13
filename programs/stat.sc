@@ -467,7 +467,7 @@ changeStat(event, category) -> (
     if(category == 'combined' && !parseCombinedFile(event):0, _error('Combined statistic not found'));
     showStat(category, if(category == 'digs' && !event, global_default_dig, event));
     show();
-    logger(str('[Stat] Stat Change | %s ➡ %s.%s', player(), category, event));
+    logger(str('[Stat] Stat Change | %s -> %s.%s', player(), category, event));
 );
 
 showStat(category, event) -> (
@@ -559,7 +559,7 @@ carouselInterval(seconds) -> (
     if(type(seconds) != 'number', _error('The interval provided is not a number'));
     global_carousel_data:'interval' = seconds * 20;
     print(format('f » ', 'g Carousel interval was set to ', str('d %d ', seconds), 'g seconds'));
-    logger(str('[Stat] Carousel Interval Change | %s ➡ %d', player(), seconds));
+    logger(str('[Stat] Carousel Interval Change | %s -> %d', player(), seconds));
 );
 
 addCarouselEntry(entry, category) -> (
