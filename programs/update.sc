@@ -2,10 +2,9 @@
 
 __config() -> {
     'commands' -> {
-        '' -> ['updateBlock', null, null, null],
-        '<start>' -> ['updateBlock', null, null],
-        '<start> <end>' -> ['updateBlock', null],
-        '<start> <end> <block>' -> 'updateBlock'
+        '' -> ['updateBlocks', null, null, null],
+        '<start> <end>' -> ['updateBlocks', null],
+        '<start> <end> <block>' -> 'updateBlocks'
     },
     'arguments' -> {
         'start' -> {
@@ -18,8 +17,8 @@ __config() -> {
     'scope' -> 'player'
 };
 
-updateBlock(start, end, block) -> {
-    if(!start, return(update(query(player(), 'trace', 5, 'blocks'))));
-    if(!end, return(update(start)));
-    volume(start, end, if(!block || _ == block, update(_)));
+updateBlocks(start, end, block) -> {
+    trace = player()~'trace';
+    if(!start && trace && type(trace) == 'block', return(block_tick(trace)));
+    volume(start, end, if(!block || _ == block, block_tick(_)));
 }
