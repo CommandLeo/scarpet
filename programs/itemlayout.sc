@@ -92,10 +92,6 @@ _getItemFromBlock(block) -> (
     return('air');
 );
 
-_readLayout(layout) -> (
-    return(filter(read_file(str('item_layouts/%s', layout), 'shared_text'), _ != 'air' && item_list()~_ != null));
-);
-
 _setInfo(screen, page_count, pages_length, items_length) -> (
     inventory_set(screen, 49, 1, 'paper', str('{display:{Name:\'{"text":"Page %d/%d","color":"#26DE81","italic":false}\',Lore:[\'{"text":"%s entries","color":"gray","italic":false}\']}}', page_count % pages_length + 1, pages_length, items_length));
 );
@@ -141,6 +137,7 @@ deleteLayout(layout, confirm) -> (
 listLayouts() -> (
     files = list_files('item_layouts', 'shared_text');
     if(!files, _error('There are no item layouts saved'));
+
     layouts = map(files, slice(_, length('item_layouts') + 1));
     texts = reduce(layouts, [..._a, if(_i == 0, '', 'g , '), str('#26DE81 %s', _), str('?/%s view %s', system_info('app_name'), _)], ['f » ', 'g Saved item layouts: ']);
     print(format(texts));
@@ -149,13 +146,14 @@ listLayouts() -> (
 pasteLayout(layout, direction, item_frame_direction) -> (
     if(list_files('item_layouts', 'shared_text')~str('item_layouts/%s', layout) == null, _error('That item layout doesn\'t exist'));
 
-    items = _readLayout(layout);
-    if(!items, _error('There are no items in the layout'));
+    items = read_file(str('item_layouts/%s', layout), 'shared_text');
+    if(!items, _error('There are no items in the item layout'));
 
     origin_pos = player()~'pos';
     for(items,
         pos = pos_offset(origin_pos, direction, _i);
         set(pos, 'air');
+        if(item_list()~_ == null, continue());
         if(block_list()~_ != null,
             set(pos, _),
             !place_item(_, pos),
@@ -170,9 +168,10 @@ pasteLayout(layout, direction, item_frame_direction) -> (
 viewLayout(layout) -> (
     if(list_files('item_layouts', 'shared_text')~str('item_layouts/%s', layout) == null, _error('That item layout doesn\'t exist'));
 
-    items = _readLayout(layout);
+    entries = read_file(str('item_layouts/%s', layout), 'shared_text');
+    items = filter(entries, _ != 'air' && item_list()~_ != null);
     l = length(items);
-    if(!l, _error('There are no items in the layout'));
+    if(!l, _error('There are no items in the item layout'));
 
     pages = map(range(l / 45), slice(items, _ * 45, min(l, (_ + 1) * 45)));
     global_page = 0;
@@ -214,6 +213,8 @@ setDefaultBlock(block) -> (
         print(format('f » ', 'g The default block has been reset'))
     );
 );
+
+// EVENTS
 
 __on_close() -> (
     store_app_data({'default_block' -> global_default_block});
