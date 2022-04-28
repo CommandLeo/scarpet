@@ -31,6 +31,7 @@ settings = read_file('settings', 'json');
 global_stat = settings:'stat' || [];
 global_bots_included = settings:'bots_included';
 global_offline_digs = if(settings:'offline_digs' != null, settings:'offline_digs', true);
+global_total_enabled = if(settings:'total_enabled' != null, settings:'total_enabled', true);
 global_dig_display = settings:'dig_display' || {};
 global_dig_display_color = settings:'dig_display_color' || {};
 global_stat_color = settings:'stat_color' || 'FFEE44';
@@ -50,16 +51,17 @@ global_help_pages = [
         '%color% /%app_name% extra <extra_stat> ', 'f ｜ ', 'g Extra statistics that are not normally in the game, e.g. xp_level, ping, health, hunger', ' \n',
         '%color% /%app_name% bedrock_removed ', 'f ｜ ', 'g Amount of bedrock removed by hand using pistons and tnt', ' \n',
         '%color% /%app_name% digs <dig> ', 'f ｜ ', 'g Amount of digs (%default_dig% by default)', ' \n',
-        '%color% /%app_name% combined <combined_stat> ', 'f ｜ ', 'g Multiple statistics combined together', ' \n',
+        '%color% /%app_name% combined <combined_stat> ', 'f ｜ ', 'g Multiple statistics combined together', ' \n'
     ],
     [
         '%color% /%app_name% print <category> <entry> [<player>] ', 'f ｜ ', 'g Prints the value of a stat of a player', ' \n',
         '%color% /%app_name% hide ', 'f ｜ ', 'g Hides the scoreboard', ' \n',
         '%color% /%app_name% show ', 'f ｜ ', 'g Shows the scoreboard', '  \n',
-        '%color% /%app_name% bots (on|off|toggle) ', 'f ｜ ', 'g A shortcut for /%app_name% settings bots_included', '  \n',
         '%color% /%app_name% settings bots_included [on|off|toggle] ', 'f ｜ ', 'g Includes or excludes bots in the scoreboard', ' \n',
+        '%color% /%app_name% bots [on|off|toggle] ', 'f ｜ ', 'g Shortcut for the command above', '  \n',
         '%color% /%app_name% settings default_dig <dig> ', 'f ｜ ', 'g Sets the default dig type ', 'f *', '^g For server operators only', '  \n',
         '%color% /%app_name% settings offline_digs [on|off|toggle] ', 'f ｜ ', 'g Includes or excludes digs of offline whitelisted players in the scoreboard', ' \n',
+        '%color% /%app_name% settings total [on|off|toggle] ', 'f ｜ ', 'g Enables or disables the total in the scoreboard', ' \n',
         '%color% /%app_name% settings dig_display [on|off|toggle] ', 'f ｜ ', 'g Shows or hides digs in the player list footer', ' \n',
         '%color% /%app_name% settings dig_display_color <hex_color> ', 'f ｜ ', 'g Changes the color of digs display for yourself; leave empty to reset', ' \n',
         '%color% /%app_name% settings stat_color <hex_color> ', 'f ｜ ', 'g Changes the color of the scoreboard name for everyone; leave empty to reset ', 'f *', '^g For server operators only', ' \n'
@@ -80,10 +82,9 @@ global_help_pages = [
 
 __config() -> {
     'resources' -> [
-        // Display names
         {
-        'source' -> str('https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/display_names/%d.json', system_info('game_major_target')),
-        'target' -> 'display_names.json'
+            'source' -> str('https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/display_names/%d.json', system_info('game_major_target')),
+            'target' -> 'display_names.json'
         },
         // Default combined stats
         {
@@ -114,6 +115,10 @@ __config() -> {
         'settings offline_digs on' -> ['toggleOfflineDigs', true],
         'settings offline_digs off' -> ['toggleOfflineDigs', false],
         'settings offline_digs toggle' -> ['toggleOfflineDigs', null],
+        'settings total' -> ['toggleTotal', null],
+        'settings total on' -> ['toggleTotal', true],
+        'settings total off' -> ['toggleTotal', false],
+        'settings total toggle' -> ['toggleTotal', null],
         'settings dig_display' -> ['toggleDigDisplay', null],
         'settings dig_display on' -> ['toggleDigDisplay', true],
         'settings dig_display off' -> ['toggleDigDisplay', false],
@@ -320,7 +325,7 @@ parseCombinedFile(name) -> (
 );
 
 calculateTotal() -> (
-    if(!global_stat, return());
+    if(!global_stat || !global_total_enabled, return());
     for(scoreboard('stats'), if(_ != global_total_text, total += scoreboard('stats', _)));
     scoreboard('stats', global_total_text, total);
 );
@@ -358,7 +363,7 @@ getStat(player, category, event) -> (
 
 displayDigs(player) -> (
     uuid = player~'uuid';
-    if(global_dig_display:uuid == false || !player(player), return());
+    if(!global_dig_display:uuid || !player(player), return());
     color = global_dig_display_color:uuid || global_stat_color;
     display_title(player, 'player_list_footer', format(str('#%s ⬛ %s', color, getStat(player, 'digs', 'combined_blocks')), '#343A40  ｜ ', str('#%s ⚒ %s', color, getStat(player, 'digs', 'total')), '#343A40  ｜ ', str('#%s ⛏ %s', color, getStat(player, 'digs', 'pick'))));
 );
@@ -415,9 +420,15 @@ toggleOfflineDigs(value) -> (
 
 toggleDigDisplay(value) -> (
     uuid = player()~'uuid';
-    global_dig_display:uuid = if(value == null, global_dig_display:uuid == false, value);
+    global_dig_display:uuid = if(value == null, !global_dig_display:uuid, value);
     print(format('f » ', 'g Digs are now ', if(global_dig_display:uuid, 'l displayed', 'r hidden'), 'g  in the player list footer'));
     if(global_dig_display:uuid, displayDigs(player()), display_title(player(), 'player_list_footer'));
+);
+
+toggleTotal(value) -> (
+    global_total_enabled = if(value == null, !global_total_enabled, value);
+    print(format('f » ', 'g Total is now ', if(global_total_enabled, 'l enabled', 'r disabled')));
+    if(global_total_enabled, calculateTotal(), scoreboard_remove('stats', global_total_text));
 );
 
 setDigDisplayColor(color) -> (
@@ -430,7 +441,7 @@ setDigDisplayColor(color) -> (
         global_dig_display_color:uuid = color;
         print(format('f » ', 'g Dig display color has been set to ', str('#%s #%s', global_dig_display_color:uuid, global_dig_display_color:uuid)));
     );
-    if(global_dig_display:uuid != false, displayDigs(player()));
+    if(global_dig_display:uuid, displayDigs(player()));
 );
 
 setStatColor(color) -> (
@@ -506,6 +517,7 @@ updateDigs(player) -> (
 
 listCombinedStats() -> (
     combined_stats = map(list_files('combined', 'text'), slice(_, length('combined') + 1));
+    if(!combined_stats, _error('There are no combined stats available'));
     texts = reduce(combined_stats, [..._a, if(_i == 0, '', 'g , '), str('#FFEE44 %s', _), str('?/%s settings combined_stats info %s', global_app_name, _)], ['f » ', 'g Available combined stats: ']);
     print(format(texts));
 );
@@ -576,7 +588,7 @@ removeCarouselEntry(index) -> (
 
 listCarouselEntries() -> (
     entries = global_carousel_data:'entries';
-    if(!length(entries), exit(print(format('f » ', 'g No entries to show, the carousel is empty'))));
+    if(!entries, _error('No entries to show, the carousel is empty'));
     print(format(reduce(entries, [..._a, ' \n  ', '#EB4D4Bb ❌', '^r Remove entry', str('?/%s carousel remove %d', global_app_name, _i), '  ', str('g %s.%s', _)], ['f » ', 'g Carousel entries: ', '#26DE81b (+)', '^l Add more entries', str('?/%s carousel add ', global_app_name)])));
 );
 
@@ -633,6 +645,7 @@ __on_close() -> (
         'stat' -> global_stat,
         'bots_included' -> global_bots_included,
         'offline_digs' -> global_offline_digs,
+        'total_enabled' -> global_total_enabled,
         'dig_display' -> global_dig_display,
         'dig_display_color' -> global_dig_display_color,
         'stat_color' -> global_stat_color,
@@ -646,7 +659,7 @@ __on_close() -> (
 
 __on_start() -> (
     for(['stats', 'bedrock_removed', 'digs'], if(scoreboard()~_ == null, scoreboard_add(_)));
-    scoreboard_display('list', 'digs');
+    if(all(scoreboard(), scoreboard_property(_, 'display_slot')~'list' == null), scoreboard_display('list', 'digs'));
 
     if(global_stat:0 == 'combined', [display_name, combined_category, entries] = parseCombinedFile(global_stat:1); global_combined = [combined_category, entries]);
     for(player('all'), updateDigs(_); updateStat(_));
