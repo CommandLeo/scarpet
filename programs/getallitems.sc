@@ -1,6 +1,6 @@
 // Get All Items by CommandLeo
 
-global_survival_unobtainables = ['bedrock', 'end_portal_frame', 'barrier', 'light', 'command_block', 'repeating_command_block', 'chain_command_block', 'structure_void', 'structure_block', 'jigsaw', 'sculk_sensor', 'petrified_oak_slab', 'spawner', 'player_head', 'budding_amethyst', 'chorus_plant', 'dirt_path', 'grass_path', 'farmland', 'infested_stone', 'infested_cobblestone', 'infested_stone_bricks', 'infested_mossy_stone_bricks', 'infested_cracked_stone_bricks', 'infested_chiseled_stone_bricks', 'infested_deepslate', 'reinforced_deepslate', 'command_block_minecart', 'knowledge_book', 'debug_stick', 'bundle'];
+global_survival_unobtainables = ['bedrock', 'end_portal_frame', 'barrier', 'light', 'command_block', 'repeating_command_block', 'chain_command_block', 'structure_void', 'structure_block', 'jigsaw', 'sculk_sensor', 'petrified_oak_slab', 'spawner', 'player_head', 'budding_amethyst', 'chorus_plant', 'dirt_path', 'grass_path', 'farmland', 'frogspawn', 'infested_stone', 'infested_cobblestone', 'infested_stone_bricks', 'infested_mossy_stone_bricks', 'infested_cracked_stone_bricks', 'infested_chiseled_stone_bricks', 'infested_deepslate', 'reinforced_deepslate', 'command_block_minecart', 'knowledge_book', 'debug_stick', 'bundle'];
 global_junk = ['filled_map', 'written_book', 'tipped_arrow'];
 
 version = system_info('game_major_target');
