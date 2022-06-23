@@ -7,7 +7,8 @@ __config() -> {
     'commands' -> {
         '' -> 'help',
         'save <from_pos> <to_pos> <direction> <name>' -> 'saveLayout',
-        'paste <layout> <direction> <facing>' -> 'pasteLayout',
+        'paste <layout> <direction> <facing>' -> ['pasteLayout', false],
+        'paste <layout> <direction> <facing> <item_frames_only>' -> 'pasteLayout',
         'delete <layout>' -> ['deleteLayout', false],
         'delete <layout> confirm' -> ['deleteLayout', true],
         'list' -> 'listLayouts',
@@ -37,6 +38,9 @@ __config() -> {
             'options' -> global_directions,
             'suggest' -> global_directions,
             'case_sensitive' -> false
+        },
+        'item_frames_only' -> {
+            'type' -> 'bool'
         },
         'name' -> {
             'type' -> 'term',
@@ -107,7 +111,7 @@ help() -> (
         'fs ' + ' ' * 80, ' \n',
         '#1ECB74b Item Layout ', 'g by ', '#26DE81b CommandLeo', '^g https://github.com/CommandLeo', '@https://github.com/CommandLeo', ' \n\n',
         '#26DE81 /app_name save <from_pos> <to_pos> <direction> <name> ', 'f ｜ ', 'g Saves a layout from a row of blocks, looking for extra blocks or item frames in the specified direction', ' \n',
-        '#26DE81 /app_name paste <layout> <direction> <item_frame_facing> ', 'f ｜ ', 'g Pastes a layout starting from your current position toward the specified direction', ' \n',
+        '#26DE81 /app_name paste <layout> <direction> <item_frame_facing> [<item_frames_only>]', 'f ｜ ', 'g Pastes a layout starting from your current position toward the specified direction', ' \n',
         '#26DE81 /app_name delete <layout> ', 'f ｜ ', 'g Deletes a layout', ' \n',
         '#26DE81 /app_name list ', 'f ｜ ', 'g Lists all layouts', ' \n',
         '#26DE81 /app_name view <layout> ', 'f ｜ ', 'g Displays the content of a layout inside a fancy menu', ' \n',
@@ -143,7 +147,7 @@ listLayouts() -> (
     print(format(texts));
 );
 
-pasteLayout(layout, direction, item_frame_direction) -> (
+pasteLayout(layout, direction, item_frame_direction, item_frames_only) -> (
     if(list_files('item_layouts', 'shared_text')~str('item_layouts/%s', layout) == null, _error('That item layout doesn\'t exist'));
 
     items = read_file(str('item_layouts/%s', layout), 'shared_text');
@@ -154,12 +158,12 @@ pasteLayout(layout, direction, item_frame_direction) -> (
         pos = pos_offset(origin_pos, direction, _i);
         set(pos, 'air');
         if(item_list()~_ == null, continue());
-        if(block_list()~_ != null,
-            set(pos, _),
-            !place_item(_, pos),
-            set(pos, global_default_block || 'air');
-            spawn('item_frame', pos_offset(pos, item_frame_direction), {'Facing' -> global_directions~item_frame_direction, 'Fixed' -> true, 'Item' -> {'id' -> _, 'Count' -> 1}});
+        if(!item_frames_only,
+            if(block_list()~_ != null, continue(set(pos, _)));
+            if(place_item(_, pos), continue());
         );
+        if(global_default_block, set(pos, global_default_block));
+        spawn('item_frame', pos_offset(pos, item_frame_direction), {'Facing' -> global_directions~item_frame_direction, 'Fixed' -> true, 'Item' -> {'id' -> _, 'Count' -> 1}});
     );
 
     print(format('f » ', 'g Item layout ', str('#26DE81 %s', layout), 'g  has been pasted'));
