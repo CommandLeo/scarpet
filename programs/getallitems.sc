@@ -1,7 +1,7 @@
 // Get All Items by CommandLeo
 
 global_survival_unobtainables = ['bedrock', 'end_portal_frame', 'barrier', 'light', 'command_block', 'repeating_command_block', 'chain_command_block', 'structure_void', 'structure_block', 'jigsaw', 'sculk_sensor', 'petrified_oak_slab', 'spawner', 'player_head', 'budding_amethyst', 'chorus_plant', 'dirt_path', 'grass_path', 'farmland', 'frogspawn', 'infested_stone', 'infested_cobblestone', 'infested_stone_bricks', 'infested_mossy_stone_bricks', 'infested_cracked_stone_bricks', 'infested_chiseled_stone_bricks', 'infested_deepslate', 'reinforced_deepslate', 'command_block_minecart', 'knowledge_book', 'debug_stick', 'bundle'];
-global_junk = ['filled_map', 'written_book', 'tipped_arrow'];
+global_junk = ['filled_map', 'written_book', 'tipped_arrow', 'firework_star'];
 
 version = system_info('game_major_target');
 if(version < 18, global_survival_unobtainables += 'spore_blossom');
@@ -34,7 +34,7 @@ __config() -> {
     'scope' -> 'player'
 };
 
-_isSurvivalUnobtainable(item) -> item~'spawn_egg' != null || item~'spawn_egg' != null || global_survival_unobtainables~item != null;
+_isSurvivalUnobtainable(item) -> item~'spawn_egg' != null || global_survival_unobtainables~item != null;
 
 getItems(category, stackability) -> (
     item_list = filter(item_list(), _ != 'air' && if(category == 'survival_obtainables', !_isSurvivalUnobtainable(_) && global_junk~_ == null, true) && global_stackabilities:stackability~stack_limit(_) != null);
