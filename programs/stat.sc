@@ -195,37 +195,31 @@ __config() -> {
     'arguments' -> {
         'block' -> {
             'type' -> 'term',
-            'suggestions' -> global_block_list,
             'options' -> global_block_list,
             'case_sensitive' -> false
         },
         'item' -> {
             'type' -> 'term',
-            'suggestions' -> global_item_list,
             'options' -> global_item_list,
             'case_sensitive' -> false
         },
         'entity' -> {
             'type' -> 'term',
-            'suggestions' -> global_entity_list,
             'options' -> global_entity_list,
             'case_sensitive' -> false
         },
         'misc_stat' -> {
             'type' -> 'term',
-            'suggestions' -> keys(global_misc_stats),
             'options' -> keys(global_misc_stats),
             'case_sensitive' -> false
         },
         'extra_stat' -> {
             'type' -> 'term',
-            'suggestions' -> keys(global_extra_stats),
             'options' -> keys(global_extra_stats),
             'case_sensitive' -> false
         },
         'dig' -> {
             'type' -> 'term',
-            'suggestions' -> keys(global_dig_data),
             'options' -> keys(global_dig_data),
             'case_sensitive' -> false
         },
@@ -236,7 +230,6 @@ __config() -> {
         },
         'category' -> {
             'type' -> 'term',
-            'suggest' -> keys(global_categories),
             'options' -> keys(global_categories),
             'case_sensitive' -> false
         },
@@ -247,7 +240,7 @@ __config() -> {
         'entries' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                entries_string = args:'entries' || ' ';
+                entries_string = args:'entries';
                 category = args:'category';
                 list = if(
                     category == 'used' || category == 'broken' || category == 'crafted' || category == 'dropped' || category == 'picked_up', global_item_list, 
@@ -258,16 +251,17 @@ __config() -> {
                     category == 'digs', keys(global_dig_data)
                 );
                 entries = split(' ', entries_string);
-                if(length(entries) && slice(entries_string, -1) != ' ', delete(entries, -1));
-                if(entries, map(list, str('%s %s', join(' ', entries), _)), list);
+                if(length(entries) && slice(entries, -1) != ' ', delete(entries, -1));
+                entries_string = join(' ', entries);
+                return(if(entries, map(list, str('%s %s', entries_string, _)), list));
             ),
             'case_sensitive' -> false
         },      
         'hex_color' -> {
-            'type' -> 'term',
+            'type' -> 'string',
             'suggester' -> _(args) -> (
                 color = upper(args:'hex_color' || '');
-                if(!color || (length(color) < 6 && all(split(color), has(global_hex_charset, _))), map(global_hex_charset, color + _), []);
+                return(if(!color || (length(color) < 6 && all(split(color), has(global_hex_charset, _))), map(global_hex_charset, color + _)));
             ),
             'case_sensitive' -> false
         },
@@ -305,6 +299,12 @@ __config() -> {
 // HELPER FUNCTIONS
 
 _error(error) -> exit(print(format(str('r %s', error))));
+
+validateHex(string) -> (
+    hex = upper(string)~'^#?([0-9A-F]{6}|[0-9A-F]{3})$';
+    if(length(hex) == 3, hex = replace(hex, '(.)', '$1$1'));
+    return(hex);
+);
 
 isInvalidEntry(entry) -> (
     if(entry == global_total_text, return(false));
@@ -436,8 +436,8 @@ setDigDisplayColor(color) -> (
     if(!color,
         delete(global_dig_display_color:uuid);
         print(format('f » ', 'g Dig display color has been ', 'r reset')),
-        color = upper(replace(color, '#'));
-        if(length(color) != 6 || !all(split(color), has(global_hex_charset, _ )), _error('Invalid hex color'));
+        color = validateHex(color);
+        if(!color, _error('Invalid hex color'));
         global_dig_display_color:uuid = color;
         print(format('f » ', 'g Dig display color has been set to ', str('#%s #%s', global_dig_display_color:uuid, global_dig_display_color:uuid)));
     );
@@ -449,8 +449,8 @@ setStatColor(color) -> (
     if(!color,
         global_stat_color = 'FFEE44';
         print(format('f » ', 'g Stat color has been ', 'r reset')),
-        color = upper(replace(color, '#', ''));
-        if(length(color) != 6 || !all(split(color), has(global_hex_charset, _ )), _error('Invalid hex color'));
+        color = validateHex(color);
+        if(!color, _error('Invalid hex color'));
         global_stat_color = color;
         print(format('f » ', 'g Stat color has been set to ', str('#%s #%s', global_stat_color, global_stat_color)));
     );
