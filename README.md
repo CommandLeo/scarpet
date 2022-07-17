@@ -12,4 +12,5 @@ Fill Level Utilities|[fill_level.sc](https://raw.githubusercontent.com/CommandLe
 Cartlog|[cartlog.sc](https://raw.githubusercontent.com/CommandLeo/scarpet/main/programs/cartlog.sc)|A tool to monitor certain aspects of minecarts. <br> [Docs](https://github.com/CommandLeo/scarpet/wiki/Cartlog)
 Quick Killing|[k.sc](https://raw.githubusercontent.com/CommandLeo/scarpet/main/programs/k.sc)|Quickly kill items and xp orbs (within a certain distance). <br> [Docs](https://github.com/CommandLeo/scarpet/wiki/Quick-Killing)
 Comparator Signal Strength Display|[compdisplay.sc](https://raw.githubusercontent.com/CommandLeo/scarpet/main/programs/compdisplay)|Display the signal strength of a comparator above it.
+Gradient Generator|[gradient.sc](https://raw.githubusercontent.com/CommandLeo/scarpet/main/programs/gradient.sc)|A script to generate text gradients. <br> [Docs](https://github.com/CommandLeo/scarpet/wiki/Gradient-Generator)
 Block Updater|[update.sc](https://raw.githubusercontent.com/CommandLeo/scarpet/main/programs/update.sc)|Send block updates to one or more blocks. <br> [Docs](https://github.com/CommandLeo/scarpet/wiki/Block-Updater)
