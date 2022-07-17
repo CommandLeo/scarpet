@@ -19,6 +19,6 @@ __config() -> {
 
 updateBlocks(start, end, block) -> {
     trace = player()~'trace';
-    if(!start && trace && type(trace) == 'block', return(block_tick(trace)));
-    volume(start, end, if(!block || _ == block, block_tick(_)));
+    if(!start && trace && type(trace) == 'block', return(update(trace)));
+    volume(start, end, if(!block || _ == block, update(_)));
 }
