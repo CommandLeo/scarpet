@@ -85,15 +85,6 @@ __config() -> {
         {
             'source' -> str('https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/display_names/%d.json', system_info('game_major_target')),
             'target' -> 'display_names.json'
-        },
-        // Default combined stats
-        {
-            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/combined/concrete_placed.txt',
-            'target' -> 'combined/concrete_placed.txt'
-        },
-        {
-            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/combined/ores_mined.txt',
-            'target' -> 'combined/ores_mined.txt'
         }
     ],
     'commands' -> {
@@ -128,10 +119,26 @@ __config() -> {
         'settings stat_color' -> ['setStatColor', null],
         'settings stat_color <hex_color>' -> 'setStatColor',
         'settings default_dig <dig>' -> 'setDefaultDig',
+
         'settings combined_stats list' -> 'listCombinedStats',
         'settings combined_stats info <combined_stat>' -> 'combinedStatInfo',
-        'settings combined_stats create <name> <display_name> <category> <entries>' -> 'createCombinedStat',
-        'settings combined_stats delete <combined_stat>' -> 'deleteCombinedStat',
+        'settings combined_stats create <name> <display_name> mined blocks <blocks>' -> ['createCombinedStatFromBlocks', 'mined'],
+        'settings combined_stats create <name> <display_name> mined tag <block_tag>' -> ['createCombinedStatFromBlockTag', 'mined'],
+        'settings combined_stats create <name> <display_name> crafted items <items>' -> ['createCombinedStatFromItems', 'crafted'],
+        'settings combined_stats create <name> <display_name> crafted tag <item_tag>' -> ['createCombinedStatFromItemTag', 'crafted'],
+        'settings combined_stats create <name> <display_name> used items <items>' -> ['createCombinedStatFromItems', 'used'],
+        'settings combined_stats create <name> <display_name> used tag <item_tag>' -> ['createCombinedStatFromItemTag', 'used'],
+        'settings combined_stats create <name> <display_name> broken items <items>' -> ['createCombinedStatFromItems', 'broken'],
+        'settings combined_stats create <name> <display_name> broken tag <item_tag>' -> ['createCombinedStatFromItemTag', 'broken'],
+        'settings combined_stats create <name> <display_name> picked_up items <items>' -> ['createCombinedStatFromItems', 'picked_up'],
+        'settings combined_stats create <name> <display_name> picked_up tag <item_tag>' -> ['createCombinedStatFromItemTag', 'picked_up'],
+        'settings combined_stats create <name> <display_name> dropped items <items>' -> ['createCombinedStatFromItems', 'dropped'],
+        'settings combined_stats create <name> <display_name> dropped tag <item_tag>' -> ['createCombinedStatFromItemTag', 'dropped'],
+        'settings combined_stats create <name> <display_name> killed entities <entities>' -> ['createCombinedStatFromEntities', 'killed'],
+        'settings combined_stats create <name> <display_name> killed_by entities <entities>' -> ['createCombinedStatFromEntities', 'killed_by'],
+        'settings combined_stats create <name> <display_name> misc misc_entries <misc_entries>' -> 'createCombinedStatFromMiscEntries',
+        'settings combined_stats delete <combined_stat>' -> ['deleteCombinedStat', false],
+        'settings combined_stats delete <combined_stat> confirm' -> ['deleteCombinedStat', true],
 
         'mined <block>' -> ['changeStat', 'mined'],
         'crafted <item>' -> ['changeStat', 'crafted'],
@@ -198,9 +205,21 @@ __config() -> {
             'options' -> global_block_list,
             'case_sensitive' -> false
         },
+        'block_tag' -> {
+            'type' -> 'identifier',
+            'suggest' -> block_tags(),
+            'options' -> block_tags(),
+            'case_sensitive' -> false
+        },
         'item' -> {
             'type' -> 'term',
             'options' -> global_item_list,
+            'case_sensitive' -> false
+        },
+        'item_tag' -> {
+            'type' -> 'identifier',
+            'suggest' -> item_tags(),
+            'options' -> item_tags(),
             'case_sensitive' -> false
         },
         'entity' -> {
@@ -236,27 +255,51 @@ __config() -> {
         'player' -> {
             'type' -> 'players',
             'single' -> true
-        },
-        'entries' -> {
+        },      
+        'items' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                entries_string = args:'entries';
-                category = args:'category';
-                list = if(
-                    category == 'used' || category == 'broken' || category == 'crafted' || category == 'dropped' || category == 'picked_up', global_item_list, 
-                    category == 'mined', global_block_list,
-                    category == 'killed' || category == 'killed_by', global_entity_list,
-                    category == 'custom', keys(global_misc_stats),
-                    category == 'extra', keys(global_extra_stats),
-                    category == 'digs', keys(global_dig_data)
-                );
-                entries = split(' ', entries_string);
-                if(length(entries) && slice(entries, -1) != ' ', delete(entries, -1));
-                entries_string = join(' ', entries);
-                return(if(entries, map(list, str('%s %s', entries_string, _)), list));
+                i = args:'items';
+                items = split(' ', i);
+                if(length(items) && slice(i, -1) != ' ', delete(items, -1));
+                items_string = join(' ', items);
+                return(if(items, map(global_item_list, str('%s %s', items_string, _)), global_item_list));
             ),
             'case_sensitive' -> false
-        },      
+        },    
+        'blocks' -> {
+            'type' -> 'text',
+            'suggester' -> _(args) -> (
+                b = args:'blocks';
+                blocks = split(' ', b);
+                if(length(blocks) && slice(b, -1) != ' ', delete(blocks, -1));
+                blocks_string = join(' ', blocks);
+                return(if(blocks, map(global_block_list, str('%s %s', blocks_string, _)), global_block_list));
+            ),
+            'case_sensitive' -> false
+        },    
+        'entities' -> {
+            'type' -> 'text',
+            'suggester' -> _(args) -> (
+                e = args:'entities';
+                entities = split(' ', e);
+                if(length(entities) && slice(e, -1) != ' ', delete(entities, -1));
+                entities_string = join(' ', entities);
+                return(if(entities, map(global_entity_list, str('%s %s', entities_string, _)), global_entity_list));
+            ),
+            'case_sensitive' -> false
+        },    
+        'misc_entries' -> {
+            'type' -> 'text',
+            'suggester' -> _(args) -> (
+                m = args:'misc_entries';
+                misc_entries = split(' ', m);
+                if(length(misc_entries) && slice(m, -1) != ' ', delete(misc_entries, -1));
+                misc_entries_string = join(' ', misc_entries);
+                return(if(misc_entries, map(global_misc_stats, str('%s %s', misc_entries_string, _)), keys(global_misc_stats)));
+            ),
+            'case_sensitive' -> false
+        },    
         'hex_color' -> {
             'type' -> 'string',
             'suggester' -> _(args) -> (
@@ -300,28 +343,28 @@ __config() -> {
 
 _error(error) -> exit(print(format(str('r %s', error))));
 
-validateHex(string) -> (
+_validateHex(string) -> (
     hex = upper(string)~'^#?([0-9A-F]{6}|[0-9A-F]{3})$';
     if(length(hex) == 3, hex = replace(hex, '(.)', '$1$1'));
     return(hex);
 );
 
-isInvalidEntry(entry) -> (
+_parseCombinedStatFile(name) -> (
+    file = read_file('combined/' + name, 'text');
+    display_name = file:0;
+    category = if(length(file) > 1, file:1);
+    loop(2, delete(file, 0));
+    return([display_name, category, file]);
+);
+
+_isInvalidEntry(entry) -> (
     if(entry == global_total_text, return(false));
     if(global_stat:0 == 'digs' && global_server_whitelisted && global_offline_digs, return(!has(system_info('server_whitelist'), str(entry))));
     return(!player(entry) || (!global_bots_included && player(entry)~'player_type' == 'fake'));
 );
 
 removeInvalidEntries() -> (
-    for(scoreboard('stats'), if(isInvalidEntry(_), scoreboard_remove('stats', _)));
-);
-
-parseCombinedFile(name) -> (
-    file = read_file('combined/' + name, 'text');
-    display_name = file:0;
-    category = if(length(file) > 1, file:1);
-    loop(2, delete(file, 0));
-    return([display_name, category, file]);
+    for(scoreboard('stats'), if(_isInvalidEntry(_), scoreboard_remove('stats', _)));
 );
 
 calculateTotal() -> (
@@ -351,7 +394,7 @@ getStat(player, category, event) -> (
         );
     );
     if(category == 'combined',
-        if(event == global_stat:1 && global_combined, [category, entries] = global_combined, [display_name, category, entries] = parseCombinedFile(event));
+        if(event == global_stat:1 && global_combined, [category, entries] = global_combined, [display_name, category, entries] = _parseCombinedStatFile(event));
         return(if(entries, reduce(entries, _a + statistic(player, category, _), 0)));
     );
     if(category == 'extra',
@@ -436,7 +479,7 @@ setDigDisplayColor(color) -> (
     if(!color,
         delete(global_dig_display_color:uuid);
         print(format('f » ', 'g Dig display color has been ', 'r reset')),
-        color = validateHex(color);
+        color = _validateHex(color);
         if(!color, _error('Invalid hex color'));
         global_dig_display_color:uuid = color;
         print(format('f » ', 'g Dig display color has been set to ', str('#%s #%s', global_dig_display_color:uuid, global_dig_display_color:uuid)));
@@ -449,7 +492,7 @@ setStatColor(color) -> (
     if(!color,
         global_stat_color = 'FFEE44';
         print(format('f » ', 'g Stat color has been ', 'r reset')),
-        color = validateHex(color);
+        color = _validateHex(color);
         if(!color, _error('Invalid hex color'));
         global_stat_color = color;
         print(format('f » ', 'g Stat color has been set to ', str('#%s #%s', global_stat_color, global_stat_color)));
@@ -475,7 +518,7 @@ printStatValue(event, player, category) -> (
 
 changeStat(event, category) -> (
     if(global_carousel_active, _error('Couldn\'t change the displayed statistic, a carousel is currently active'));
-    if(category == 'combined' && !parseCombinedFile(event):0, _error('Combined statistic not found'));
+    if(category == 'combined' && list_files('combined', 'text')~str('combined/%s', event) == null, _error('Combined statistic not found'));
     showStat(category, if(category == 'digs' && !event, global_default_dig, event));
     show();
     logger(str('[Stat] Stat Change | %s -> %s.%s', player(), category, event));
@@ -483,7 +526,7 @@ changeStat(event, category) -> (
 
 showStat(category, event) -> (
     if(category == 'combined', 
-        [display_name, combined_category, entries] = parseCombinedFile(event);
+        [display_name, combined_category, entries] = _parseCombinedStatFile(event);
         global_combined = [combined_category, entries];
     );
     global_stat = [category, event];
@@ -495,7 +538,7 @@ showStat(category, event) -> (
 
 updateStat(player) -> (
     if(!global_stat, return());
-    if(isInvalidEntry(str(player)), return(scoreboard_remove('stats', player)));
+    if(_isInvalidEntry(str(player)), return(scoreboard_remove('stats', player)));
     value = getStat(player, ...global_stat);
     if(value, scoreboard('stats', player, value), scoreboard_remove('stats', player));
 );
@@ -516,32 +559,84 @@ updateDigs(player) -> (
 // COMBINED STATS MANAGING
 
 listCombinedStats() -> (
-    combined_stats = map(list_files('combined', 'text'), slice(_, length('combined') + 1));
-    if(!combined_stats, _error('There are no combined stats available'));
+    files = list_files('combined', 'text');
+    if(!files, _error('There are no combined stats available'));
+
+    combined_stats = map(files, slice(_, length('combined') + 1));
     texts = reduce(combined_stats, [..._a, if(_i == 0, '', 'g , '), str('#FFEE44 %s', _), str('?/%s settings combined_stats info %s', global_app_name, _)], ['f » ', 'g Available combined stats: ']);
     print(format(texts));
 );
 
-combinedStatInfo(name) -> (
-    [display_name, category, entries] = parseCombinedFile(name);
-    if(!display_name && !category && !entries, _error('Combined statistic not found'));
-    print(format('f » ', str('#FFEE44 %s', display_name), str('^g %s', name), 'g  ｜ Entries:\n', 'g ' + join('\n', map(entries, str('    %s.%s', category, _)))));
+combinedStatInfo(combined_stat) -> (
+    if(list_files('combined', 'text')~str('combined/%s', combined_stat) == null, _error(str('The combined stat %s doesn\'t exist', combined_stat)));
+    [display_name, category, entries] = _parseCombinedStatFile(combined_stat);
+    texts = reduce(entries,  [..._a, ' \n    ', str('g %s.%s', category, _), str('?/%s %s %s', global_app_name, if(category == 'custom', 'misc', category), _)], ['f » ', str('#FFEE44 %s', display_name), str('^g %s', combined_stat), 'f ｜', 'g Entries:']);
+    print(format(texts));
 );
 
-createCombinedStat(name, display_name, category, entries_string) -> (
+createCombinedStatFromBlockTag(name, display_name, block_tag, category) -> (
+    if(block_tags()~block_tag == null, _error('Invalid block tag'));
+    blocks = block_list(block_tag);
+    createCombinedStat(name, display_name, category, blocks);
+);
+
+createCombinedStatFromItemTag(name, display_name, item_tag, category) -> (
+    if(item_tags()~item_tag == null, _error('Invalid item tag'));
+    items = item_list(item_tag);
+    createCombinedStat(name, display_name, category, items);
+);
+
+createCombinedStatFromItems(name, display_name, items_string, category) -> (
+    items = split(' ', items_string);
+    if(!items, _error('No items provided'));
+    invalid_items = {};
+    for(items, if(global_item_list~_ == null, invalid_items += _));
+    if(invalid_items, _error(str('Invalid items: %s', join(', ', keys(invalid_items)))));
+    createCombinedStat(name, display_name, category, items);
+);
+
+createCombinedStatFromBlocks(name, display_name, blocks_string, category) -> (
+    blocks = split(' ', blocks_string);
+    if(!blocks, _error('No blocks provided'));
+    invalid_blocks = {};
+    for(blocks, if(global_block_list~_ == null, invalid_blocks += _));
+    if(invalid_blocks, _error(str('Invalid blocks: %s', join(', ', keys(invalid_blocks)))));
+    createCombinedStat(name, display_name, category, blocks);
+);
+
+createCombinedStatFromEntities(name, display_name, entities_string, category) -> (
+    entities = split(' ', entities_string);
+    if(!entities, _error('No entities provided'));
+    invalid_entities = {};
+    for(entities, if(global_entity_list~_ == null, invalid_entities += _));
+    if(invalid_entities, _error(str('Invalid entities: %s', join(', ', keys(invalid_entities)))));
+    createCombinedStat(name, display_name, category, entities);
+);
+
+createCombinedStatFromMiscEntries(name, display_name, misc_entries_string) -> (
+    misc_entries = split(' ', misc_entries_string);
+    if(!misc_entries, _error('No misc entries provided'));
+    invalid_misc_entries = {};
+    for(misc_entries, if(global_misc_stats~_ == null, invalid_misc_entries += _));
+    if(invalid_misc_entries, _error(str('Invalid misc entries: %s', join(', ', keys(invalid_misc_entries)))));
+    createCombinedStat(name, display_name, 'custom', misc_entries);
+);
+
+createCombinedStat(name, display_name, category, entries) -> (
     if(player()~'permission_level' == 0, _error('You must be an operator to run this command'));
-    filename = 'combined/' + name;
-    if(read_file(filename, 'text'), _error('There\'s already a combined statistic with that name'));
-    if(!has(global_categories, category), _error('Invalid category'));
-    entries = split(' ', entries_string);
-    if(!entries, _error('No entries provided'));
+    filename = str('combined/%s', name);
+    if(list_files('combined', 'text')~filename != null, _error('There\'s already a combined statistic with that name'));
     write_file(filename, 'text', display_name, category, ...entries);
-    print(format('f » ', 'g Successfully created the combined stat'));
+    print(format('f » ', 'g Successfully created the ', str('#FFEE44 %s', name), 'g  combined stat'));
 );
 
-deleteCombinedStat(name) -> (
+deleteCombinedStat(combined_stat, confirmation) -> (
     if(player()~'permission_level' == 0, _error('You must be an operator to run this command'));
-    if(delete_file('combined/' + name, 'text'), print(format('f » ', 'g Successfully deleted the combined stat')), _error('Combined stat not found'));
+    filename = str('combined/%s', combined_stat);
+    if(list_files('combined', 'text')~filename == null, _error(str('The combined stat %s doesn\'t exist', combined_stat)));
+    if(!confirmation, exit(print(format('f » ', 'g Do you really want to delete the ', str('#FFEE44 %s', combined_stat), 'g  combined stat? ', 'lb YES', '^l Click to confirm', str('!/%s settings combined_stats delete %s confirm', global_app_name, combined_stat)))));
+    delete_file(filename, 'text');
+    print(format('f » ', 'g Successfully deleted the ', str('#FFEE44 %s', combined_stat), 'g  combined stat'));
 );
 
 // CAROUSEL
@@ -661,7 +756,7 @@ __on_start() -> (
     for(['stats', 'bedrock_removed', 'digs'], if(scoreboard()~_ == null, scoreboard_add(_)));
     if(all(scoreboard(), scoreboard_property(_, 'display_slot')~'list' == null), scoreboard_display('list', 'digs'));
 
-    if(global_stat:0 == 'combined', [display_name, combined_category, entries] = parseCombinedFile(global_stat:1); global_combined = [combined_category, entries]);
+    if(global_stat:0 == 'combined', [display_name, combined_category, entries] = _parseCombinedStatFile(global_stat:1); global_combined = [combined_category, entries]);
     for(player('all'), updateDigs(_); updateStat(_));
     removeInvalidEntries();
     calculateTotal();
