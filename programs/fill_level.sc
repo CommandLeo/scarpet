@@ -79,7 +79,7 @@ help() -> (
 getFillLevel(target) -> (
     fill_level = if(
         target == 'composter' || target == 'cauldron' || target == 'water_cauldron' || target == 'powder_snow_cauldron',
-            block_state(target, 'level') || 0,
+            block_state(pos(target), 'level') || 0,
         inventory_has_items(target) != null,
             if(
                 inventory_has_items(target),
@@ -121,16 +121,16 @@ setFillLevel(fill_level, position) -> (
     print(format('f » ', 'g Filled ', str('gi %s', target), '^g ' + pos(target), 'g  with fill level ', str('%s %d', global_color, actual_fill_level), if(actual_fill_level != fill_level, str('g  (instead of %s)', fill_level)))),
 );
 
-setComposterFillLevel(block, fill_level) -> (
+setComposterFillLevel(composter, fill_level) -> (
     if(fill_level > 8 || fill_level < 0, _error('Invalid fill level'));
-    set(block, 'composter', {'level' -> fill_level}),
+    set(composter, 'composter', {'level' -> fill_level});
 );
 
-setCauldronFillLevel(block, fill_level) -> (
+setCauldronFillLevel(cauldron, fill_level) -> (
     if(fill_level > 3 || fill_level < 0, _error('Invalid fill level'));
     if(fill_level == 0,
-        set(block, 'cauldron'),
-        set(block, if(system_info('game_major_target') >= 17, 'water_cauldron', 'cauldron'), {'level' -> fill_level})
+        set(cauldron, 'cauldron'),
+        set(cauldron, if(system_info('game_major_target') >= 17, 'water_cauldron', 'cauldron'), {'level' -> fill_level})
     );
 );
 
