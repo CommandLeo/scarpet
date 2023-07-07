@@ -1,11 +1,12 @@
-// PulseLength by CommandLeo
+// Period by CommandLeo & Firigion
 
-global_color = '#E74C3C';
+global_color = '#3498DB';
 global_valid_blockstates = {'powered', 'power', 'extended', 'triggered', 'enabled'};
 global_littables = {'redstone_torch', 'redstone_wall_torch', 'redstone_lamp', 'redstone_ore'};
-global_highlight_color = 0xE74C3C88;
+global_highlight_color = 0x3498DB88;
 
 global_monitored = {};
+global_data = {};
 
 _checkVersion(version) -> (
     regex = '(\\d+)\.(\\d+)\.(\\d+)';
@@ -44,7 +45,7 @@ _error(error) -> (
 help() -> (
     texts = [
         'fs ' + ' ' * 80, ' \n',
-        '#C0392Bb PulseLength', 'g  by ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/PulseLength'), 'g by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
+        '#2980B9b Period', 'g  by ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Period'), 'g by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
         '%color% /%app_name% monitor [<position>]', 'f ｜', 'g Starts monitoring the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% unmonitor [<position>]', 'f ｜', 'g Unmonitors the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% clear', 'f ｜', 'g Unmonitors all blocks', ' \n',
@@ -96,6 +97,7 @@ unmonitor(position) -> (
     data = {'position' -> pos(target), 'dimension' -> dimension};
     if(!has(global_monitored, data), _error('That block is not being monitored'));
     delete(global_monitored, data);
+    delete(global_data, data);
 
     run(str('playsound minecraft:item.shield.break master %s', player()));
     print(format('f » ', 'g Successfully unmonitored ', str('gi %s', target), 'g  at ', str('%s %s', global_color, str(pos(target))), str('^g %s', dimension)));
@@ -106,6 +108,7 @@ clear() -> (
     if(!l, _error('No blocks are being monitored'));
 
     global_monitored = {};
+    global_data = {};
     print(format('f » ', 'g Unmonitored ', str('%s %s ', global_color, l), str('g block%s', if(l == 1, '', 's'))));
 );
 
@@ -127,7 +130,7 @@ highlightAll() -> (
     if(l < 1, _error('There are no blocks to highlight'));
 
     for(global_monitored, in_dimension(_:'dimension', draw_shape('box', 100, {'player' -> player(), 'from' -> _:'position', 'to' -> _:'position' + 1, 'fill' -> global_highlight_color, 'color' -> 0})));
-    
+
     run(str('playsound minecraft:entity.evoker.cast_spell master %s', player()));
     print(format('f » ', 'g Highlighted ', str('%s %s ', global_color, l), str('g blocks%s', if(l == 1, '', 's'))));
 );
@@ -139,20 +142,42 @@ highlight(position, dimension) -> (
     run(str('playsound minecraft:entity.evoker.cast_spell master %s', player()));
 );
 
-pulselength() -> (
+period() -> (
     for(global_monitored,
         dimension = _:'dimension';
         position = _:'position';
         block = in_dimension(dimension, block(position));
-        if(!(isValid(block) || block == 'moving_piston'), delete(global_monitored, _),
-            isActive(block), global_monitored:_ += 1,
-            global_monitored:_ > 0, (
-                if(player(), print(player(), format('#C0392Bb PulseLength', 'f  » ', str('gi %s', block), 'g  at ', str('%s %s', global_color, str(position)), str('^g %s', dimension), str('!/%s highlight %d %d %d %s', system_info('app_name'), ...position, dimension), 'f  » ', str('%s %dgt', global_color, global_monitored:_))));
-                global_monitored:_ = 0
-            )
-        );
+        if(!isValid(block) && block != 'moving_piston',
+            delete(global_monitored, _);
+            delete(global_data, _),
+
+            if(isActive(block),
+                if(!global_data:_:'was_active', (
+                        global_data:_ = global_data:_ || {};
+                        global_data:_:'was_active' = true;
+                        global_data:_:'on_tick' = tick_time() - 1
+                    ),
+
+                    global_data:_:'was_inactive',
+                        period_and_durations = [
+                            tick_time() - global_data:_:'on_tick',
+                            global_data:_:'off_tick'-global_data:_:'on_tick',
+                            tick_time() - global_data:_:'off_tick'
+                        ];
+                    if(global_data:_:'period' != period_and_durations,
+                        global_data:_:'period' = period_and_durations;
+                        if(player(), print(player(), format('#2980B9b Period', 'f  » ', str('gi %s', block), 'g  at ', str('%s %s', global_color, str(position)), str('^g %s', dimension), str('!/%s highlight %d %d %d %s', system_info('app_name'), ...position, dimension), 'f  » ', str('%s %dgt', global_color, period_and_durations:0), str('^g Frequency: §3%.2fHz§7｜On time: §3%dgt§7｜Off time: §3%dgt', 20 / period_and_durations:0, period_and_durations:1, period_and_durations:2))));
+                    );
+                    global_data:_:'was_active' = false;
+                    global_data:_:'was_inactive' = false
+                ), 
+                global_data:_:'was_active' && !global_data:_:'was_inactive',
+                    global_data:_:'off_tick' = tick_time();
+                    global_data:_:'was_inactive' = true
+           )
+        )
     );
-    schedule(1, 'pulselength');
+    schedule(1, 'period');
 );
 
-__on_start() -> pulselength();
+__on_start() -> period();

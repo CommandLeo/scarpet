@@ -1,12 +1,14 @@
 // Fill Level Utilities by CommandLeo
 
 global_color = '#E67E22';
+
 global_stackable_dummy_item = global_default_stackable_dummy_item = ['structure_void', null];
 global_unstackable_dummy_item = global_default_unstackable_dummy_item = ['shulker_box', null];
 
 __config() -> {
     'commands' -> {
         '' -> 'help',
+
         'get' -> ['printFillLevel', null],
         'get <pos>' -> 'printFillLevel',
         'set <fill_level>' -> ['setFillLevel', null],
@@ -63,15 +65,17 @@ _getReadingComparators(pos) -> (
 // MAIN
 
 help() -> (
-    print(player(), format(
+    texts = [
         'fs ' + ' ' * 80, ' \n',
-        '#D35400b Fill Level Utilities ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Fill-Level-Utilities'), 'g by ', '#E67E22b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
-        str('%s /%s get [<pos>]', global_color, system_info('app_name')), 'f ｜', 'g Gets the fill level of the container you are looking at or at the specified coords', ' \n',
-        str('%s /%s set <fill_level> [<pos>]', global_color, system_info('app_name')), 'f ｜', 'g Sets the fill level of the container you are looking at or at the specified coords', ' \n',
-        str('%s /%s dummy_item unstackable [get|set|reset|give]', global_color, system_info('app_name')), 'f ｜', 'g Gets, sets, resets or gives the unstackable dummy item', ' \n',
-        str('%s /%s dummy_item stackable [get|set|reset|give]', global_color, system_info('app_name')), 'f ｜', 'g Gets, sets, resets or gives the stackable dummy item', ' \n',
+        '#D35400b Fill Level Utilities ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Fill-Level-Utilities'), 'g by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
+        '%color% /%app_name% get [<position>]', 'f ｜', 'g Gets the fill level of the block you are looking at or at the specified position', ' \n',
+        '%color% /%app_name% set <fill_level> [<position>]', 'f ｜', 'g Sets the fill level of the block you are looking at or at the specified position', ' \n',
+        '%color% /%app_name% dummy_item stackable [get|set|reset|give]', 'f ｜', 'g Gets, sets, resets or gives the stackable dummy item', ' \n',
+        '%color% /%app_name% dummy_item unstackable [get|set|reset|give]', 'f ｜', 'g Gets, sets, resets or gives the unstackable dummy item', ' \n',
         'fs ' + ' ' * 80
-    ));
+    ];
+    replacement_map = {'%app_name%' -> system_info('app_name'), '%color%' -> global_color};
+    print(format(map(texts, reduce(pairs(replacement_map), replace(_a, ..._), _))));
 );
 
 // FILL LEVEL
@@ -164,23 +168,25 @@ printStackableDummyItem() -> (
 setStackableDummyItemFromHand() -> (
     holds = player()~'holds';
     if(!holds, _error('You are not holding any item'));
+
     setStackableDummyItem(holds);
 );
 
 setStackableDummyItem(item_tuple) -> (
-    if(!item_tuple,
-        global_stackable_dummy_item = global_default_stackable_dummy_item;
-        print(format('f » ', 'g The stackable dummy item has been reset')),
-
-        [item, count, nbt] = item_tuple;
-        if(stack_limit(item) == 1, _error('You can use only stackable items'));
-        global_stackable_dummy_item = [item, nbt];
-        print(format('f » ', 'g The stackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
+    if(
+        !item_tuple,
+            global_stackable_dummy_item = global_default_stackable_dummy_item;
+            print(format('f » ', 'g The stackable dummy item has been reset')),
+        // else
+            [item, count, nbt] = item_tuple;
+            if(stack_limit(item) == 1, _error('You can use only stackable items'));
+            global_stackable_dummy_item = [item, nbt];
+            print(format('f » ', 'g The stackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
     );
 );
 
 giveStackableDummyItem() -> (
-    [item, nbt] = global_unstackable_dummy_item;
+    [item, nbt] = global_stackable_dummy_item;
     run(str('give %s %s%s', player()~'command_name', item, nbt || ''));
 );
 
@@ -192,18 +198,20 @@ printUnstackableDummyItem() -> (
 setUnstackableDummyItemFromHand() -> (
     holds = player()~'holds';
     if(!holds, _error('You are not holding any item'));
+
     setUnstackableDummyItem(holds);
 );
 
 setUnstackableDummyItem(item_tuple) -> (
-    if(!item_tuple,
-        global_unstackable_dummy_item = global_default_unstackable_dummy_item;
-        print(format('f » ', 'g The unstackable dummy item has been reset')),
-
-        [item, count, nbt] = item_tuple;
-        if(stack_limit(item) != 1, _error('You can use only unstackable items'));
-        global_unstackable_dummy_item = [item, nbt];
-        print(format('f » ', 'g The unstackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
+    if(
+        !item_tuple,
+            global_unstackable_dummy_item = global_default_unstackable_dummy_item;
+            print(format('f » ', 'g The unstackable dummy item has been reset')),
+        // else
+            [item, count, nbt] = item_tuple;
+            if(stack_limit(item) != 1, _error('You can use only unstackable items'));
+            global_unstackable_dummy_item = [item, nbt];
+            print(format('f » ', 'g The unstackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
     );
 );
 
