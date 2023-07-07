@@ -1,4 +1,4 @@
-# CommandLeo's Scarpet App Repository
+# CommandLeo Scarpet App Repository
 
 Name|Script|Description|Video
 ---|---|---|---
