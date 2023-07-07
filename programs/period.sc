@@ -45,7 +45,7 @@ _error(error) -> (
 help() -> (
     texts = [
         'fs ' + ' ' * 80, ' \n',
-        '#2980B9b Period', 'g  by ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Period'), 'g by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
+        '#2980B9b Period', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Period'), 'g  by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
         '%color% /%app_name% monitor [<position>]', 'f ｜', 'g Starts monitoring the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% unmonitor [<position>]', 'f ｜', 'g Unmonitors the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% clear', 'f ｜', 'g Unmonitors all blocks', ' \n',
