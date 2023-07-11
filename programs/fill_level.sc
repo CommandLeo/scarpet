@@ -35,7 +35,7 @@ __config() -> {
             'suggest' -> []
         }
     },
-    'scope' -> 'player'
+    'scope' -> 'global'
 };
 
 // HELPER FUNCTIONS
