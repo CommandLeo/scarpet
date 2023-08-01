@@ -25,8 +25,7 @@ __config() -> {
     },
     'libraries' -> [
         {
-            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/libraries/survival_unobtainables.scl',
-            'target' -> 'survival_unobtainables.scl'
+            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/libraries/survival_unobtainables.scl'
         }
     ],
     'requires' -> {
