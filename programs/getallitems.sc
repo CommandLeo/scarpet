@@ -23,7 +23,12 @@ __config() -> {
             'options' -> keys(global_stackabilities)
         }
     },
-    'libraries' -> [{'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/libraries/survival_unobtainables.scl'}],
+    'libraries' -> [
+        {
+            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/libraries/survival_unobtainables.scl',
+            'target' -> 'survival_unobtainables.scl'
+        }
+    ],
     'requires' -> {
         'carpet' -> '>=1.4.57'
     },
