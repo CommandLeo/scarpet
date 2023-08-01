@@ -1,0 +1,34 @@
+game_version = system_info('game_major_target');
+global_survival_unobtainables = [
+    'bedrock',
+    'suspicious_sand',
+    'suspicious_gravel',
+    'budding_amethyst',
+    'petrified_oak_slab',
+    'chorus_plant',
+    'spawner', // for 1.19.2-
+    'monster_spawner', // for 1.19.3+
+    'farmland',
+    ...filter(item_list(), _~'infested' != null),
+    'reinforced_deepslate',
+    'end_portal_frame',
+    'command_block',
+    'barrier',
+    'light',
+    'grass_path', // for 1.16-
+    'dirt_path', // for 1.17+
+    'repeating_command_block',
+    'chain_command_block',
+    'structure_void',
+    'structure_block',
+    'jigsaw',
+    'bundle',
+    ...filter(item_list(), _~'spawn_egg' != null),
+    'player_head',
+    'command_block_minecart',
+    'knowledge_book',
+    'debug_stick',
+    'frogspawn'
+];
+if(game_version < 18, global_survival_unobtainables += 'spore_blossom');
+if(game_version < 19, global_survival_unobtainables += 'sculk_sensor');
