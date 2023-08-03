@@ -5,6 +5,39 @@ global_obtainabilities = ['everything', 'main_storage', 'survival_obtainables'];
 global_stackabilities = {'stackables' -> [16, 64], 'unstackables' -> [1], '64_stackables' -> [64], '16_stackables' -> [16]};
 
 global_items = map(item_list(), [_, null]);
+global_survival_unobtainables = [
+    'bedrock',
+    'suspicious_sand',
+    'suspicious_gravel',
+    'budding_amethyst',
+    'petrified_oak_slab',
+    'chorus_plant',
+    'spawner', // for 1.19.2-
+    'monster_spawner', // for 1.19.3+
+    'farmland',
+    ...filter(item_list(), _~'infested' != null),
+    'reinforced_deepslate',
+    'end_portal_frame',
+    'command_block',
+    'barrier',
+    'light',
+    'grass_path', // for 1.16-
+    'dirt_path', // for 1.17+
+    'repeating_command_block',
+    'chain_command_block',
+    'structure_void',
+    'structure_block',
+    'jigsaw',
+    'bundle',
+    ...filter(item_list(), _~'spawn_egg' != null),
+    'player_head',
+    'command_block_minecart',
+    'knowledge_book',
+    'debug_stick',
+    'frogspawn'
+];
+if(game_version < 18, global_survival_unobtainables += 'spore_blossom');
+if(game_version < 19, global_survival_unobtainables += 'sculk_sensor');
 global_junk_items = ['filled_map', 'written_book', 'tipped_arrow', 'firework_star', 'firework_rocket', 'bee_nest'];
 
 __config() -> {
@@ -23,18 +56,11 @@ __config() -> {
             'options' -> keys(global_stackabilities)
         }
     },
-    'libraries' -> [
-        {
-            'source' -> 'https://raw.githubusercontent.com/CommandLeo/scarpet/main/libraries/survival_unobtainables.scl'
-        }
-    ],
     'requires' -> {
         'carpet' -> '>=1.4.57'
     },
     'scope' -> 'player'
 };
-
-import('survival_unobtainables', 'global_survival_unobtainables');
 
 getAllItems(category, stackability) -> (
     items = if(category == 'main_storage', [...global_items, ...map(range(3), ['firework_rocket', {'Fireworks' -> {'Flight' -> _ + 1}}])], global_items);
