@@ -1,0 +1,26 @@
+[
+	{
+		"name": "itemlayout",
+		"display_name": "Item Layout",
+		"color": "#26DE81",
+		"wiki": "https://github.com/CommandLeo/scarpet/wiki/Item-Layout"
+	},
+	{
+		"name": "randomizer",
+		"display_name": "Item Randomizer",
+		"color": "#9B59B6",
+		"wiki": "https://github.com/CommandLeo/scarpet/wiki/Item-Randomizer"
+	},
+	{
+		"name": "getallitems",
+		"display_name": "Get All Items",
+		"color": "#E84393",
+		"wiki": "https://github.com/CommandLeo/scarpet/wiki/Get-All-Items"
+	},
+	{
+		"name": "fill_level",
+		"display_name": "Fill Level Utilities",
+		"color": "#E67E22",
+		"wiki": "https://github.com/CommandLeo/scarpet/wiki/Fill-Level-Utilities"
+	}
+]
