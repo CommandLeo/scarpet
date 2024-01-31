@@ -8,13 +8,23 @@ __config() -> {
     'arguments' -> {
         'distance' -> {
             'type' -> 'int',
-            'suggest' -> [100]
+            'suggest' -> []
         }
     },
-    'scope' -> 'player'
+    'requires' -> {
+        'carpet' -> '>=1.4.57'
+    },
+    'scope' -> 'global'
 };
 
-kill(distance)->(
-    for(['item', 'experience_orb'], for(if(distance > 0, entity_area(_, pos(player()), [distance, distance, distance]), entity_list(_)), modify(_, 'kill'); killed_count += 1));
+kill(distance) -> (
+    killed_count = 0
+    for(['item', 'experience_orb'],
+        entities = if(distance > 0, entity_area(_, system_info('source_position'), [distance, distance, distance]), entity_list(_));
+        for(entities,
+            modify(_, 'kill');
+            killed_count += 1;
+        );
+    );
     print(format('f » ', 'g Killed ', str('d %d', killed_count),  str('g  entit%s', if(killed_count != 1, 'ies', 'y'))));
 );
