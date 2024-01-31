@@ -17,8 +17,24 @@ __config() -> {
     'scope' -> 'player'
 };
 
-updateBlocks(start, end, block) -> {
+updateBlocks(start, end, block) -> (
     trace = player()~'trace';
-    if(!start && trace && type(trace) == 'block', return(update(trace)));
-    volume(start, end, if(!block || _ == block, update(_)));
-}
+    if(!start || !end,
+        if(
+            trace && type(trace) == 'block',
+                update(trace);
+                print(format('f » ', 'g Updated ', str('gi %s', trace), str('g  at [%d, %d, %d]', ...pos(trace)))),
+            // else
+                print(format('r You are not looking at any block'))
+        );
+        exit();
+    );
+    updated_count = 0;
+    volume(start, end,
+        if(!air(_) && (!block || _ == block),
+            update(_);
+            updated_count += 1;
+        );
+    );
+    print(format('f » ', 'g Updated ', str('d %d', updated_count),  str('g  block%s', if(updated_count != 1, 's', ''))));
+)
