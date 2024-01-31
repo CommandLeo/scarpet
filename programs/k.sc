@@ -18,7 +18,7 @@ __config() -> {
 };
 
 kill(distance) -> (
-    killed_count = 0
+    killed_count = 0;
     for(['item', 'experience_orb'],
         entities = if(distance > 0, entity_area(_, system_info('source_position'), [distance, distance, distance]), entity_list(_));
         for(entities,
