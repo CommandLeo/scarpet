@@ -31,8 +31,11 @@ __config() -> {
         'fill_level' -> {
             'type' -> 'int',
             'min' -> 0,
-            'max' -> 897,
+            'max' -> if(system_info('game_pack_version') < 33, 897, 15),
             'suggest' -> []
+        },
+        'item' -> {
+            'type' -> 'item'
         }
     },
     'scope' -> 'global'
@@ -47,6 +50,10 @@ _checkVersion(version) -> (
     target_version = map(version~regex, number(_));
     scarpet_version = map(system_info('scarpet_version')~regex, number(_));
     return(scarpet_version >= target_version);
+);
+
+_giveCommand(item, nbt) -> (
+    return('give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_, true))) + ']', encode_nbt(nbt, true)), ''));
 );
 
 _getReadingComparators(pos) -> (
@@ -67,7 +74,7 @@ _getReadingComparators(pos) -> (
 help() -> (
     texts = [
         'fs ' + ' ' * 80, ' \n',
-        '#D35400b Fill Level Utilities ', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Fill-Level-Utilities'), 'g by ', '#%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
+        '%color%b Fill Level Utilities ', if(_checkVersion('1.4.57'), ...['@https://github.com/CommandLeo/scarpet/wiki/Fill-Level-Utilities', '^g Click to visit the wiki']), 'g by ', '%color%b CommandLeo', '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'), ' \n\n',
         '%color% /%app_name% get [<position>]', 'f ｜', 'g Gets the fill level of the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% set <fill_level> [<position>]', 'f ｜', 'g Sets the fill level of the block you are looking at or at the specified position', ' \n',
         '%color% /%app_name% dummy_item stackable [get|set|reset|give]', 'f ｜', 'g Gets, sets, resets or gives the stackable dummy item', ' \n',
@@ -141,18 +148,20 @@ setCauldronFillLevel(cauldron, fill_level) -> (
 setContainerFillLevel(block, fill_level) -> (
     slots = inventory_size(block);
     items = if(fill_level == 1, 1, ceil(slots * 64 / 14 * (fill_level - 1)));
+    [dummy_item, dummy_nbt] = global_stackable_dummy_item;
+    [unstackable_dummy_item, unstackable_dummy_nbt] = global_unstackable_dummy_item;
     if(fill_level <= 15,
         loop(slots,
             amount = min(items, 64);
             items += -amount;
-            inventory_set(block, _, amount, ...global_stackable_dummy_item);
+            inventory_set(block, _, amount, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt));
         ),
         loop(slots,
             amount = min(64, items / 64);
             items += -if(amount < 1, amount, floor(amount)) * 64;
             if(amount < 1,
-                inventory_set(block, _, amount * 64, ...global_stackable_dummy_item),
-                inventory_set(block, _, if(_ == slots - 1, ceil(amount), floor(amount)), ...global_unstackable_dummy_item)
+                inventory_set(block, _, amount * 64, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt)),
+                inventory_set(block, _, if(_ == slots - 1, ceil(amount), floor(amount)), unstackable_dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> unstackable_dummy_nbt, 'id' -> unstackable_dummy_item}, unstackable_dummy_nbt))
             );
         )
     );
@@ -180,6 +189,7 @@ setStackableDummyItem(item_tuple) -> (
         // else
             [item, count, nbt] = item_tuple;
             if(stack_limit(item) == 1, _error('You can use only stackable items'));
+            if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
             global_stackable_dummy_item = [item, nbt];
             print(format('f » ', 'g The stackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
     );
@@ -187,7 +197,7 @@ setStackableDummyItem(item_tuple) -> (
 
 giveStackableDummyItem() -> (
     [item, nbt] = global_stackable_dummy_item;
-    run(str('give %s %s%s', player()~'command_name', item, nbt || ''));
+    run(_giveCommand(item, nbt));
 );
 
 printUnstackableDummyItem() -> (
@@ -210,6 +220,7 @@ setUnstackableDummyItem(item_tuple) -> (
         // else
             [item, count, nbt] = item_tuple;
             if(stack_limit(item) != 1, _error('You can use only unstackable items'));
+            if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
             global_unstackable_dummy_item = [item, nbt];
             print(format('f » ', 'g The unstackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt)))),
     );
@@ -217,5 +228,5 @@ setUnstackableDummyItem(item_tuple) -> (
 
 giveUnstackableDummyItem() -> (
     [item, nbt] = global_unstackable_dummy_item;
-    run(str('give %s %s%s', player()~'command_name', item, nbt || ''));
+    run(_giveCommand(item, nbt));
 );

@@ -1,10 +1,21 @@
 // Item Layout by CommandLeo
 
 global_color = '#26DE81';
-global_items = item_list();
 global_directions = ['down', 'up', 'north', 'south', 'west', 'east'];
 
-global_default_block = load_app_data():'default_block';
+global_default_block = load_app_data():'default_block' || 'gray_concrete';
+global_error_messages = {
+    'FILE_DELETION_ERROR' -> 'There was an error while deleting the file',
+    'FILE_WRITING_ERROR' -> 'There was an error while writing the file',
+    'ITEM_LAYOUT_ALREADY_EXISTS' -> 'A item layout with that name already exists',
+    'ITEM_LAYOUT_DOESNT_EXIST' -> 'The item layout %s doesn\'t exist',
+    'ITEM_LAYOUT_EMPTY' -> 'The %s item layout is empty',
+    'NOT_A_ROW_OF_BLOCKS' -> 'The area must be a row of blocks',
+    'NO_DEFAULT_BLOCK' -> 'There is no default block',
+    'NO_ITEM_LAYOUTS' -> 'There are no item layouts saved'
+};
+
+global_current_page = {};
 
 _checkVersion(version) -> (
     regex = '(\\d+)\.(\\d+)\.(\\d+)';
@@ -97,10 +108,9 @@ _scanStrip(from_pos, to_pos) -> (
 
 _getItemAtPos(pos, direction) -> (
     pos1 = pos_offset(pos, direction);
-    block1 = block(pos1);
-    if(!air(block1), return(_getItemFromBlock(block1)));
+    if(!air(pos1), return(_getItemFromBlock(block(pos1))));
 
-    item_frame = entity_area('item_frame', block1, [0.5, 0.5, 0.5]):0 || entity_area('glow_item_frame', block1, [0.5, 0.5, 0.5]):0;
+    item_frame = entity_area('item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0 || entity_area('glow_item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0;
     if(item_frame, return(query(item_frame, 'item'):0 || replace(query(item_frame, 'nbt', 'Item.id'), '.+:', '')));
 
     return(_getItemFromBlock(block(pos)));
@@ -108,16 +118,35 @@ _getItemAtPos(pos, direction) -> (
 
 _getItemFromBlock(block) -> (
     if(!block || block == global_default_block, return('air'));
-    if(global_items~block != null, return(str(block)));
+    if(item_list()~block != null, return(str(block)));
 
-    [x, y, z] = pos(block);
-    dummy_y = -1000;
-    run(str('loot spawn %d %d %d mine %d %d %d shears{Enchantments:[{id:silk_touch,lvl:1}]}', x, dummy_y, z, x, y, z));
-    items = entity_area('item', [x, dummy_y, z], [0.5, 0.5, 0.5]);
-    item = items:(-1);
-    for(items, modify(_, 'remove'));
-    if(item, return(item~'item':0));
-    return('air');
+    return(
+        if(
+            block == 'bamboo_sapling', 'bamboo',
+            block == 'beetroots', 'beetroot',
+            block == 'big_dripleaf_stem', 'big_dripleaf',
+            block == 'carrots', 'carrot',
+            block == 'cocoa', 'cocoa_beans',
+            block == 'pitcher_crop', 'pitcher_plant',
+            block == 'potatoes', 'potato',
+            block == 'powder_snow', 'powder_snow_bucket',
+            block == 'redstone_wire', 'redstone',
+            block == 'sweet_berry_bush', 'sweet_berries',
+            block == 'tall_seagrass', 'seagrass',
+            block == 'torchflower_crop', 'torchflower',
+            block == 'tripwire', 'string',
+            block~'cake', 'cake',
+            block~'cauldron', 'cauldron',
+            block~'cave_vine', 'glow_berries',
+            block~'melon', 'melon_seeds',
+            block~'pumpkin', 'pumpkin_seeds',
+            block~'azalea_bush', replace(replace(block, '_bush', ''), 'potted_', ''),
+            block~'plant', replace(block, '_plant', ''),
+            block~'potted', replace(block, 'potted_', ''),
+            block~'wall', replace(block, 'wall_', ''),
+            'air'
+        )
+    );
 );
 
 // MAIN
@@ -125,7 +154,7 @@ _getItemFromBlock(block) -> (
 menu() -> (
     texts = [
        'fs ' + ' ' * 80, ' \n',
-        '#1ECB74b Item Layout', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo/scarpet/wiki/Item-Layout'), 'g  by ', str('%sb CommandLeo', global_color), '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'),' \n\n',
+        str('%sb Item Layout', global_color), if(_checkVersion('1.4.57'), ...['@https://github.com/CommandLeo/scarpet/wiki/Item-Layout', '^g Click to visit the wiki']), 'g  by ', str('%sb CommandLeo', global_color), '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'),' \n\n',
         'g A tool to save a layout of items from a row of blocks and item frames to a file.', '  \n',
         'g Run ', str('%s /%s help', global_color, system_info('app_name')), str('!/%s help', system_info('app_name')), '^g Click to run the command', 'g  to see a list of all the commands.', '  \n',
         'fs ' + ' ' * 80
@@ -150,90 +179,98 @@ help() -> (
 
 saveItemLayout(from_pos, to_pos, direction, name) -> (
     item_layout_path = str('item_layouts/%s', name);
-    if(list_files('item_layouts', 'shared_text')~item_layout_path != null, _error('An item layout with that name exists already'));
-    if(length(filter(to_pos - from_pos, _ == 0)) != 2, _error('The area must be a row of blocks'));
+    if(list_files('item_layouts', 'shared_text')~item_layout_path != null, _error(global_error_messages:'ITEM_LAYOUT_ALREADY_EXISTS'));
+    if(length(filter(to_pos - from_pos, _ == 0)) != 2, _error(global_error_messages:'NOT_A_ROW_OF_BLOCKS'));
 
     items = map(_scanStrip(from_pos, to_pos), _getItemAtPos(_, direction));
     success = write_file(item_layout_path, 'shared_text', items);
 
-    if(!success, _error('There was an error while creating the file'));
-    print(format('f » ', 'g Successfully saved the ', str('%s %s', global_color, name), 'g  item layout'));
+    if(!success, _error(global_error_messages:'FILE_WRITING_ERROR'));
+    print(format('f » ', 'g Successfully saved the ', str('%s %s', global_color, name), str('^g /%s view %s', system_info('app_name'), name), str('!/%s view %s', system_info('app_name'), name), 'g  item layout'));
     run(str('playsound block.note_block.pling master %s', player()~'command_name'));
 );
 
 deleteItemLayout(item_layout, confirmation) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
-    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str('The item layout %s doesn\'t exist', item_layout)));
+    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
     if(!confirmation, exit(print(format('f » ', 'g Click ', str('%sbu here', global_color), str('^g /%s delete %s confirm', system_info('app_name'), item_layout), str('!/%s delete %s confirm', system_info('app_name'), item_layout),'g  to confirm the deletion of the ', str('%s %s', global_color, item_layout), 'g  item layout'))));
 
     success = delete_file(item_layout_path, 'shared_text');
 
-    if(!success, _error('There was an error while deleting the file'));
+    if(!success, _error(global_error_messages:'FILE_DELETION_ERROR'));
     print(format('f » ', 'g Successfully deleted the ', str('%s %s', global_color, item_layout), 'g  item layout'));
     run(str('playsound item.shield.break master %s', player()~'command_name'));
 );
 
 listItemLayouts() -> (
     files = list_files('item_layouts', 'shared_text');
-    if(!files, _error('There are no item layouts saved'));
+    if(!files, _error(global_error_messages:'NO_ITEM_LAYOUTS'));
 
     item_layouts = map(files, slice(_, length('item_layouts') + 1));
 
-    texts = reduce(item_layouts, [..._a, if(_i == 0, '', 'g , '), str('%s %s', global_color, _), if(_checkVersion('1.4.57'), ...[str('^g /%s view %s', system_info('app_name'), _), str('?/%s view %s', system_info('app_name'), _)])], ['f » ', 'g Saved item layouts: ']);
+    texts = reduce(item_layouts,
+        [..._a, if(_i == 0, '', 'g , '), str('%s %s', global_color, _), if(_checkVersion('1.4.57'), ...[str('^g /%s view %s', system_info('app_name'), _), str('?/%s view %s', system_info('app_name'), _)])],
+        ['f » ', 'g Saved item layouts: ']
+    );
     print(format(texts));
 );
 
 viewItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
-    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str('The item layout %s doesn\'t exist', item_layout)));
+    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
     entries = read_file(item_layout_path, 'shared_text');
-    items = filter(entries, _ != 'air' && global_items~_ != null);
-    if(!items, _error('There are no items in the item layout'));
+    items = filter(entries, _ != 'air' && item_list()~_ != null);
+    if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
-    pages = map(range(length(items) / 45), slice(items, _ * 45, min(length(items), (_ + 1) * 45)));
+    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
 
     _setMenuInfo(screen, page_count, pages_length, items_length) -> (
-        inventory_set(screen, 49, 1, 'paper', str('{pageNumber:%s,display:{Name:\'{"text":"Page %d/%d","color":"%s","italic":false}\',Lore:[\'{"text":"%s entries","color":"gray","italic":false}\']}}', page_count, page_count % pages_length + 1, pages_length, global_color, items_length));
+        name = str('\'{"text":"Page %d/%d","color":"%s","italic":false}\'', page_count % pages_length + 1, pages_length, global_color);
+        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', items_length)];
+        nbt = if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}});
+        inventory_set(screen, 49, 1, 'paper', nbt);
     );
 
-    _setMenuItems(screen, items) -> (
-        loop(45, inventory_set(screen, _, if(_ < length(items), 1, 0), items:_));
+    _setMenuItems(screen, page) -> (
+        loop(45, inventory_set(screen, _, if(_ < length(page), 1, 0), page:_));
     );
+
+    global_current_page:player() = 0;
 
     screen = create_screen(player(), 'generic_9x6', item_layout, _(screen, player, action, data, outer(pages), outer(items)) -> (
         if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
-            page_number = inventory_get(screen, 49):2:'pageNumber';
-            page = if(data:'slot' == 48, pages:(page_number += -1), data:'slot' == 50, pages:(page_number += 1));
-            _setMenuInfo(screen, page_number, length(pages), length(items));
+            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
+            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
             _setMenuItems(screen, page);
         );
         if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
     ));
 
-    _setMenuItems(screen, pages:global_page);
+    _setMenuItems(screen, pages:0);
 
-    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', '{display:{Name:\'""\'}}'));
-    _setMenuInfo(screen, 0, length(pages), length(items));
+    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
+    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
     if(length(pages) > 1,
-        inventory_set(screen, 48, 1, 'spectral_arrow', str('{display:{Name:\'{"text":"Previous page","color":"%s","italic":false}\'}}', global_color));
-        inventory_set(screen, 50, 1, 'spectral_arrow', str('{display:{Name:\'{"text":"Next page","color":"%s","italic":false}\'}}', global_color));
+        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}}));
+        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}}));
     );
 );
 
 pasteItemLayout(item_layout, direction, item_frame_direction, item_frames_only) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
-    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str('The item layout %s doesn\'t exist', item_layout)));
+    if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
     items = read_file(item_layout_path, 'shared_text');
-    if(!items, _error('There are no items in the item layout'));
+    if(!items, _error(global_error_messages:'ITEM_LAYOUT_EMPTY'));
 
     origin_pos = player()~'pos';
     for(items,
         pos = pos_offset(origin_pos, direction, _i);
         set(pos, 'air');
-        if(global_items~_ == null, continue());
+        print(_);
+        if(item_list()~_ == null, continue());
         if(!item_frames_only,
             if(block_list()~_ != null, continue(set(pos, _)));
             if(place_item(_, pos), continue());
@@ -250,7 +287,7 @@ pasteItemLayout(item_layout, direction, item_frame_direction, item_frames_only) 
 getDefaultBlock() -> (
     if(global_default_block,
         print(format('f » ', 'g The default block is currently set to ', str('%s %s', global_color, global_default_block))),
-        _error('There is no default block')
+        _error(global_error_messages:'NO_DEFAULT_BLOCK')
     );
 );
 
@@ -265,5 +302,5 @@ setDefaultBlock(block) -> (
 // EVENTS
 
 __on_close() -> (
-    store_app_data({'default_block' -> global_default_block});
+    if(global_default_block, store_app_data({'default_block' -> global_default_block}));
 );
