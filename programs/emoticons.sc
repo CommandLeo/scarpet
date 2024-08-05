@@ -99,7 +99,16 @@ global_emoticons = sort(pairs(global_emoticons));
 
 __config() -> {
     'commands' -> {
-        '' -> 'emoticons'
+        '' -> 'emoticonMenu',
+        '<emoticon>' -> 'equipEmoticon',
+        'random' -> 'randomEmoticon'
+    },
+    'arguments' -> {
+        'emoticon' -> {
+            'type' -> 'term',
+            'options' ->  map(global_emoticons, lower(replace(replace(_:0, '\\(|\\)', ''), ' ', '_'))),
+            'case_sensitive' -> false
+        }
     },
     'requires' -> {
         'carpet' -> '>=1.4.57'
@@ -107,60 +116,75 @@ __config() -> {
     'scope' -> 'player'
 };
 
-_getHeadNbt(name, value) -> (
-    return(
+_getHeadNbt(name, hash) -> (
+    head_name = str('{"text":"%s","italic":false}', name);
+    value = encode_b64(encode_json({'textures' -> {'SKIN' -> {'url' -> str('http://textures.minecraft.net/texture/%s', hash)}}}));
+    return(if(system_info('game_pack_version') >= 33,
         {
-            'display' -> {
-                'Name' -> str('{"text":"%s","italic":false}\'}', name)
-            },
-            'SkullOwner' -> {
-                'Id' -> nbt('[I;0,0,0,0]'),
-                'Properties' -> {
-                    'textures' -> [{'Value' -> encode_b64(encode_json({'textures' -> {'SKIN' -> {'url' -> 'http://textures.minecraft.net/texture/' + value}}}))}]
-                }
-            }
+            'custom_name' -> head_name,
+            'profile' -> {'properties' -> [{'name' -> 'textures', 'value' -> value}]}
+        },
+        {
+            'display' -> {'Name' -> head_name},
+            'SkullOwner' -> {'Properties' -> {'textures' -> [{'Value' -> value}]}}
         }
     );
-);
+));
 
-emoticons() -> (
+emoticonMenu() -> (
     pages = map(range(length(global_emoticons) / 45), slice(global_emoticons, _i * 45, min(length(global_emoticons), (_i + 1) * 45)));
 
-    _setMenuInfo(screen, page_count, pages_length) -> (
-        inventory_set(screen, 49, 1, 'paper', str('{pageNumber:%s,display:{Name:\'{"text":"Page %d/%d","color":"gold","italic":false}\',Lore:[\'{"text":"%s entries","color":"gray","italic":false}\']}}', page_count, page_count % pages_length + 1, pages_length, length(global_emoticons)));
+    _setMenuInfo(screen, pages_length) -> (
+        name = str('\'{"text":"Page %d/%d","color":"gold","italic":false}\'', global_page % pages_length + 1, pages_length);
+        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', length(global_emoticons))];
+        inventory_set(screen, 49, 1, 'paper', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}}));
     );
 
     _setMenuItems(screen, page) -> (
-        loop(45, inventory_set(screen, _, if(_ < length(page), 1, 0), 'player_head', encode_nbt(_getHeadNbt(...page:_), true)));
+        loop(45, inventory_set(screen, _, , if(_ < length(page), 1, 0), 'player_head', if(system_info('game_pack_version') >= 33, {'components' -> encode_nbt(_getHeadNbt(...page:_)), 'id' -> 'player_head'}, encode_nbt(_getHeadNbt(...page:_)))));
     );
     
+    global_page = 0;
     screen = create_screen(player(), 'generic_9x6', 'Emoticons', _(screen, player, action, data, outer(pages)) -> (
         if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
-            page_number = inventory_get(screen, 49):2:'pageNumber';
-            page = if(data:'slot' == 48, pages:(page_number += -1), data:'slot' == 50, pages:(page_number += 1));
-            _setMenuInfo(screen, page_number, length(pages));
+            page = if(data:'slot' == 48, pages:(global_page += -1), data:'slot' == 50, pages:(global_page += 1));
+            _setMenuInfo(screen, length(pages));
             _setMenuItems(screen, page);
         );
-        if(action == 'pickup' && data:'slot' == 53,
-            inventory_set(player, 39, 1, 'player_head', encode_nbt(_getHeadNbt(...rand(global_emoticons)), true));
-            run(str('playsound block.note_block.pling master %s', player()~'command_name'));
-        );
+        if(action == 'pickup' && data:'slot' == 53, randomEmoticon());
         if(action == 'pickup' && 0 <= data:'slot' <= 45,
             i = inventory_get(screen, data:'slot');
             if(i,
-                inventory_set(player, 39, 1, i:0, i:2);
-                run(str('playsound block.note_block.pling master %s', player()~'command_name'));
+                inventory_set(player, 39, 1, 'player_head', i:2);
+                run('playsound block.note_block.pling master @s');
             );
         );
         if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
     ));
 
     _setMenuItems(screen, pages:0);
-    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', '{display:{Name:\'""\'}}'));
-    _setMenuInfo(screen, 0, length(pages));
-    inventory_set(screen, 53, 1, 'player_head', '{display:{Name:\'{"text":"Random Emoticon","italic":false}\'},SkullOwner:{Id:[I;0,0,0,0],Properties:{textures:[{Value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGE5OWIwNWI5YTFkYjRkMjliNWU2NzNkNzdhZTU0YTc3ZWFiNjY4MTg1ODYwMzVjOGEyMDA1YWViODEwNjAyYSJ9fX0="}]}}}');
+
+    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
+    _setMenuInfo(screen, length(pages));
+    random_emoticon_head_nbt = _getHeadNbt('Random Emoticon', 'da99b05b9a1db4d29b5e673d77ae54a77eab66818586035c8a2005aeb810602a');
+    inventory_set(screen, 53, 1, 'player_head', if(system_info('game_pack_version') >= 33, {'components' -> encode_nbt(random_emoticon_head_nbt), 'id' -> 'player_head'}, encode_nbt(random_emoticon_head_nbt)));
     if(length(pages) > 1,
-        inventory_set(screen, 48, 1, 'spectral_arrow', '{display:{Name:\'{"text":"Previous page","color":"gold","italic":false}\'}}');
-        inventory_set(screen, 50, 1, 'spectral_arrow', '{display:{Name:\'{"text":"Next page","color":"gold","italic":false}\'}}');
+        previous_page_name = '\'{"text":"Previous page","color":"gold","italic":false}\'';
+        next_page_name = '\'{"text":"Next page","color":"gold","italic":false}\'';
+        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}));
+        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> next_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> next_page_name}}));
     );
+);
+
+equipEmoticon(name) -> (
+    emoticon = first(global_emoticons, lower(replace(replace(_:0, '\\(|\\)', ''), ' ', '_')) == name);
+    if(!emoticon, exit(print(format('r No emoticon found'))));
+    inventory_set(player(), 39, 1, 'player_head', if(system_info('game_pack_version') >= 33, {'components' -> encode_nbt(_getHeadNbt(...emoticon)), 'id' -> 'player_head'}, encode_nbt(_getHeadNbt(...emoticon))));
+    run('playsound block.note_block.pling master @s');
+);
+
+randomEmoticon() -> (
+    head_nbt = _getHeadNbt(...rand(global_emoticons));
+    inventory_set(player(), 39, 1, 'player_head', if(system_info('game_pack_version') >= 33, {'components' -> encode_nbt(head_nbt), 'id' -> 'player_head'}, encode_nbt(head_nbt)));
+    run('playsound block.note_block.pling master @s');
 );
