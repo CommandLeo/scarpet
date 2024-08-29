@@ -140,7 +140,8 @@ global_default_settings = {
         'skip_empty_spots' -> false,
         'replace_blocks' -> false,
         'minimal_filling' -> false,
-        'prefer_unstackables' -> false
+        'prefer_unstackables' -> false,
+        'encoder_chest_max_filling' -> true
 };
 global_settings = {};
 for(global_default_settings, global_settings:_ = config:_ || global_default_settings:_);
@@ -240,6 +241,8 @@ __config() -> {
         'settings minimal_filling <bool>' -> 'setMinimalFillingSetting',
         'settings prefer_unstackables' -> 'printPreferUnstackables',
         'settings prefer_unstackables <bool>' -> 'setPreferUnstackables',
+        'settings encoder_chest_max_filling' -> 'printEncoderChestMaxFilling',
+        'settings encoder_chest_max_filling <bool>' -> 'setEncoderChestMaxFilling',
 
         'dummy_item stackable' -> 'printStackableDummyItem',
         'dummy_item stackable get' -> 'printStackableDummyItem',
@@ -329,9 +332,11 @@ __config() -> {
         'full_box <item>' -> ['getFullBox', null],
         'full_box <item> <shulker_box_color>' -> 'getFullBox',
 
-        'bundle items <items>' -> 'giveBundleFromItems',
-        'bundle item_list <item_list>' -> 'giveBundleFromItemList',
-        'bundle item_layout <item_layout>' -> 'giveBundleFromItemLayout'
+        ...if(system_info('game_data_version') >= 2683, {
+            'bundle items <items>' -> 'giveBundleFromItems',
+            'bundle item_list <item_list>' -> 'giveBundleFromItemList',
+            'bundle item_layout <item_layout>' -> 'giveBundleFromItemLayout'
+        }, {})
     },
     'arguments' -> {
         'item' -> {
@@ -563,29 +568,29 @@ _isInvalidItem(item) -> (
 );
 
 _handleInvalidItems(item_tuples) -> (
-    invalid_items = filter(map(item_tuples, _:0), _isInvalidItem(_));
+    invalid_items = sort(_removeDuplicates(filter(map(item_tuples, _:0), _isInvalidItem(_))));
     if(invalid_items,
         if(
             global_settings:'invalid_items_mode' == 'error',
-                _error(str(global_error_messages:'INVALID_ITEMS', join(', ', sort(_removeDuplicates(invalid_items))))),
+                _error(str(global_error_messages:'INVALID_ITEMS', join(', ', invalid_items))),
             global_settings:'invalid_items_mode' == 'skip',
-                print(format('f » ', 'gb WARNING!', str('g  Skipped the following invalid items: %s', join(', ', sort(_removeDuplicates(invalid_items)))))),
+                print(format('f » ', 'rb WARNING!', str('g  Skipped %d invalid items: %s', length(invalid_items), join(', ', invalid_items)))),
             // else
-                print(format('f » ', str('g Ignored the following invalid items: %s', join(', ', sort(_removeDuplicates(invalid_items))))))
+                print(format('f » ', str('g Ignored %d invalid items: %s', length(invalid_items), join(', ', invalid_items))))
         );
     );
 );
 
 _handleUnstackableItems(item_tuples) -> (
-    unstackable_items = filter(map(item_tuples, _:0), !_isInvalidItem(_) && stack_limit(_) == 1);
+    unstackable_items = sort(_removeDuplicates(filter(map(item_tuples, _:0), !_isInvalidItem(_) && stack_limit(_) == 1)));
     if(unstackable_items,
         if(
             global_settings:'invalid_items_mode' == 'error',
-                _error(str(global_error_messages:'CANT_USE_UNSTACKABLES', join(', ', sort(_removeDuplicates(unstackable_items))))),
+                _error(str(global_error_messages:'CANT_USE_UNSTACKABLES', join(', ', unstackable_items))),
             global_settings:'invalid_items_mode' == 'skip',
-                print(format('f » ', 'gb WARNING!', str('g  Skipped the following unstackable items: %s', join(', ', sort(_removeDuplicates(unstackable_items)))))),
+                print(format('f » ', 'rb WARNING!', str('g  Skipped %d unstackable items: %s', length(unstackable_items), join(', ', unstackable_items)))),
             // else
-                print(format('f » ', str('g Ignored the following unstackable items: %s', join(', ', sort(_removeDuplicates(unstackable_items))))))
+                print(format('f » ', str('g Ignored %d unstackable items: %s', length(unstackable_items), join(', ', unstackable_items))))
         );
     );
 );
@@ -1069,8 +1074,10 @@ viewItemList(item_list) -> (
     for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
     _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
     if(length(pages) > 1,
-        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}}));
-        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}}));
+        previous_page_name = str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color);
+        next_page_name = str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color);
+        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}));
+        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> next_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> next_page_name}}));
     );
 );
 
@@ -1092,6 +1099,7 @@ settings() -> (
         'g Replace Blocks', '^g Whether to replace non-air blocks when placing blocks', str('?/%s settings replace_blocks', system_info('app_name')), 'f  - ', if(global_settings:'replace_blocks', 'lb TRUE', 'rb FALSE'), ' \n',
         'g Minimal Filling', '^g Whether to fill the first slot of standard item filters with only a single filter item regardless', str('?/%s settings minimal_filling', system_info('app_name')), 'f  - ', if(global_settings:'minimal_filling', 'lb TRUE', 'rb FALSE'), ' \n',
         'g Prefer Unstackables', '^g Whether to use unstackable dummy items instead of full stacks of stackable dummy items', str('?/%s settings prefer_unstackables', system_info('app_name')), 'f  - ', if(global_settings:'prefer_unstackables', 'lb TRUE', 'rb FALSE'), ' \n',
+        'g Encoder Chest Max Filling', '^g Whether to use normal items instead of dummy items to adjust the signal strength of encoder chests, if needed to fit more item types', str('?/%s settings encoder_chest_max_filling', system_info('app_name')), 'f  - ', if(global_settings:'encoder_chest_max_filling', 'lb TRUE', 'rb FALSE'), ' \n',
         'fs ' + ' ' * 80
     ];
     print(format(texts));
@@ -1251,6 +1259,15 @@ printPreferUnstackables() -> (
 setPreferUnstackables(bool) -> (
     global_settings:'prefer_unstackables' = bool(bool);
     print(format('f » ', 'g Preferring unstackables has been ', if(bool, 'l enabled', 'r disabled')));
+);
+
+printEncoderChestMaxFilling() -> (
+    print(format('f » ', 'g Max filling of encoder chests is ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
+);
+
+setEncoderChestMaxFilling(bool) -> (
+    global_settings:'encoder_chest_max_filling' = bool(bool);
+    print(format('f » ', 'g Max filling of encoder chests has been ', if(bool, 'l enabled', 'r disabled')));
 );
 
 // DUMMY ITEM
@@ -2045,7 +2062,7 @@ fillMISChests(from_pos, to_pos, item_list_string) -> (
         i += 1;
 
         skipped_items = _MISChest(block, items);
-        if(skipped_items, print(format('f » ', 'gb WARNING!', str('g  Not enough space in the MIS chest at %s for the following items: %s', pos(block), join(', ', map(skipped_items, _:0))))));
+        if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the MIS chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
         true;
     );
 
@@ -2122,7 +2139,7 @@ __on_MIS_chest_placed(block, player_facing, data) -> (
         if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
 
         skipped_items = _MISChest(block(pos), items);
-        if(skipped_items, print(format('f » ', 'gb WARNING!', str('g  Not enough space in the MIS chest at %s for the following items: %s', pos(block), join(', ', map(skipped_items, _:0))))));
+        if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the MIS chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
         true;
     );
 
@@ -2133,36 +2150,34 @@ __on_MIS_chest_placed(block, player_facing, data) -> (
 // ENCODER CHEST
 
 _encoderChest(chest, items, signal_strength) -> (
-    fallback_item = if(
-        global_settings:'invalid_items_mode' == 'dummy_item', global_stackable_dummy_item,
-        global_settings:'invalid_items_mode' == 'air', ['air', null]
-    );
-
     amount = ceil(inventory_size(chest) * 64 / 14 * signal_strength);
 
-    skipped_items = [];
+    i = -1;
     loop(inventory_size(chest),
         if(inventory_size(chest) - _ - 1 < amount / 64,
-            if(!skipped_items && _ < length(items), skipped_items = slice(items, _));
-            dummy_amount = min(amount, 64);
-            [dummy_item, dummy_nbt] = if(global_settings:'prefer_unstackables' && dummy_amount == 64, global_unstackable_dummy_item, global_stackable_dummy_item);
-            inventory_set(chest, _, dummy_amount / (64 / stack_limit(dummy_item)), dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt));
-            amount += -dummy_amount;
+            count = min(amount, 64);
+            [item, nbt] = if(
+                global_settings:'encoder_chest_max_filling' && _ < length(items),
+                    items:(i+=1),
+                global_settings:'prefer_unstackables' && count == 64,
+                    global_unstackable_dummy_item,
+                // else
+                    global_stackable_dummy_item
+            );
+            inventory_set(chest, _, count / (64 / stack_limit(item)), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt));
+            amount += -count;
             continue();
         );
 
-        [item, nbt] = if(_ < length(items), items:_, global_stackable_dummy_item);
+        [item, nbt] = if(_ < length(items), items:(i+=1), global_stackable_dummy_item);
 
-        if(item == 'air' && global_settings:'air_mode' == 'dummy_item', [item, nbt] = global_stackable_dummy_item);
-        if(_isInvalidItem(item) || stack_limit(item) == 1,
-            if(!fallback_item, continue());
-            [item, nbt] = fallback_item;
-        );
+        if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || stack_limit(item) == 1, [item, nbt] = global_stackable_dummy_item);
 
         inventory_set(chest, _, 2, item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt));
 
         if(item != 'air', amount += -2 * (64 / stack_limit(item)));
     );
+    skipped_items = if(i+1 < length(items), slice(items, i+1), []);
 
     return(skipped_items);
 );
@@ -2186,7 +2201,7 @@ fillEncoderChests(signal_strength, from_pos, to_pos, item_list_string) -> (
     affected_blocks = for(_scanStrip(from_pos, to_pos),
         block = _;
 
-        if(block != 'chest',
+        if(block != 'chest' && block != 'barrel',
             if(!global_settings:'skip_empty_spots', i += 1);
             continue();
         );
@@ -2198,7 +2213,7 @@ fillEncoderChests(signal_strength, from_pos, to_pos, item_list_string) -> (
         i += 1;
 
         skipped_items = _encoderChest(block, items, signal_strength);
-        if(skipped_items, print(format('f » ', 'gb WARNING!', str('g  Not enough space in the encoder chest at %s for the following items: %s', pos(block), join(', ', map(skipped_items, _:0))))));
+        if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the encoder chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
         true;
     );
 
@@ -2277,7 +2292,7 @@ __on_encoder_chest_placed(block, player_facing, data) -> (
         if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
 
         skipped_items = _encoderChest(block(pos), items, signal_strength);
-        if(skipped_items, print(format('f » ', 'gb WARNING!', str('g  Not enough space in the encoder chest at %s for the following items: %s', pos(block), join(', ', map(skipped_items, _:0))))));
+        if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the encoder chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
         true;
     );
 
