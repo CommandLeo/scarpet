@@ -22,13 +22,13 @@ global_mixed_chest_modes = {
     'full_boxes' -> 'Full Boxes',
     'mixed_boxes' -> 'Mixed Boxes'
 };
-global_item_filters = {
-    'ssi_ss2' -> 'SSI SS2',
-    'ss3' -> 'SS3',
-    ...if(system_info('game_pack_version') < 33 || system_info('world_carpet_rules'):'stackableShulkerBoxes' == true, {'overstacking' -> 'Overstacking'}, {}),
-    'box_sorter' -> 'Box Sorter',
-    'stack_separation' -> 'Stack Separation'
-};
+global_default_item_filters = [
+    ...if(system_info('game_pack_version') < 33 || system_info('world_carpet_rules'):'stackableShulkerBoxes' == true, ['overstacking'], []),
+    'box_sorter',
+    'stack_separation',
+    'ss3',
+    'ssi_ss2'
+];
 global_shulker_box_colors = {
     'default' -> '#956794',
     'white' -> '#F9FFFF',
@@ -86,7 +86,7 @@ global_stackabilities = {
     'unstackables' -> [1]
 };
 global_error_messages = {
-    'ALLITEMS_NOT_INSTALLED' -> 'You must install the allitems script to use this feature',
+    'ALLITEMS_NOT_INSTALLED' -> 'You must install the getallitems script to use this feature',
     'CANT_USE_UNSTACKABLES' -> 'You can\'t use unstackables: %s',
     'FILE_DELETION_ERROR' -> 'There was an error while deleting the file',
     'FILE_WRITING_ERROR' -> 'There was an error while writing the file',
@@ -95,6 +95,7 @@ global_error_messages = {
     'INVALID_INDEX' -> 'Invalid index',
     'INVALID_ITEMS' -> 'Invalid items: %s',
     'INVALID_ITEM_FILTER' -> 'Invalid item filter',
+    'INVALID_ITEM_LAYOUTS' -> 'Invalid item layouts: %s',
     'INVALID_ITEM_LISTS' -> 'Invalid item lists: %s',
     'INVALID_PAGE_NUMBER' -> 'Invalid page number',
     'ITEM_LAYOUT_DOESNT_EXIST' -> 'The item layout %s doesn\'t exist',
@@ -113,6 +114,7 @@ global_error_messages = {
     'NO_ITEMS_FOUND' -> 'No items were found',
     'NO_ITEMS_PROVIDED' -> 'No items were provided',
     'NO_ITEMS_TO_ADD' -> 'No items to add to the item list',
+    'NO_ITEM_LAYOUTS_PROVIDED' -> 'No item layouts were provided',
     'NO_ITEM_LISTS' -> 'There are no item lists saved',
     'NO_ITEM_LISTS_PROVIDED' -> 'No item lists were provided',
     'ONLY_STACKABLES_ALLOWED' -> 'You can use only stackable items',
@@ -124,10 +126,10 @@ global_current_page = {};
 
 // Load the config
 config = read_file('config', 'json');
-global_default_stackable_dummy_item = ['structure_void', if(system_info('game_pack_version') >= 33, {'custom_name' -> '"╚═Dummy═╝"'}, {'display' -> {'Name' -> '"╚═Dummy═╝"'}})];
+global_default_stackable_dummy_item = ['structure_void', if(system_info('game_pack_version') >= 33, {'custom_name' -> '"╚═Dummy═╝"'}, '{display:{Name:\'"╚═Dummy═╝"\'}}')];
 global_default_unstackable_dummy_item = ['shears', null];
-global_stackable_dummy_item = config:'stackable_dummy_item' || global_default_stackable_dummy_item;
-global_unstackable_dummy_item = config:'unstackable_dummy_item' || global_default_unstackable_dummy_item;
+global_stackable_dummy_item = config:'stackable_dummy_item' || copy(global_default_stackable_dummy_item);
+global_unstackable_dummy_item = config:'unstackable_dummy_item' || copy(global_default_unstackable_dummy_item);
 global_default_settings = {
         'shulker_box_color' -> 'default',
         'item_frame_type' -> 'item_frame', // item_frame | glow_item_frame
@@ -320,6 +322,9 @@ __config() -> {
         'mis_chest give <item_lists>' -> 'giveMISChest',
 
         'encoder_chest <target_signal_strength> fill <from_pos> <to_pos> <item_lists>' -> 'fillEncoderChests',
+        'encoder_chest <target_signal_strength> fix' -> ['fixEncoderChests', null, null],
+        'encoder_chest <target_signal_strength> fix <from_pos>' -> ['fixEncoderChests', null],
+        'encoder_chest <target_signal_strength> fix <from_pos> <to_pos>' -> 'fixEncoderChests',
         'encoder_chest <target_signal_strength> give <item_lists>' -> 'giveEncoderChest',
 
         'item_frame place <from_pos> <to_pos> <facing> items <items>' -> 'placeItemFramesFromItems',
@@ -328,6 +333,9 @@ __config() -> {
         'item_frame give items <items>' -> 'giveItemFramesFromItems',
         'item_frame give item_list <item_list>' -> 'giveItemFramesFromItemList',
         'item_frame give item_layout <item_layout>' -> 'giveItemFramesFromItemLayout',
+
+        'missing_items <item_list> item_layouts <item_layouts>' -> 'missingItemsFromItemLayouts',
+        'missing_items <item_list> item_lists <item_lists>' -> 'missingItemsFromItemLists',
 
         'full_box <item>' -> ['getFullBox', null],
         'full_box <item> <shulker_box_color>' -> 'getFullBox',
@@ -399,7 +407,7 @@ __config() -> {
             'suggester' -> _(args) -> (
                 input = args:'stackable_items';
                 items = split(' ', input);
-                stackable_items = filter(item_list(), stack_limit(_) != 1);
+                stackable_items = filter(item_list(), !_isUnstackable(_));
                 if(items && slice(input, -1) != ' ', delete(items, -1));
                 return(if(items, map(stackable_items, str('%s %s', join(' ', items), _)), stackable_items));
             ),
@@ -416,9 +424,20 @@ __config() -> {
             ),
             'case_sensitive' -> false
         },
+        'item_layouts' -> {
+            'type' -> 'text',
+            'suggester' -> _(args) -> (
+                input = args:'item_layouts';
+                entries = split(' ', input);
+                item_layouts = map(list_files('item_layouts', 'shared_text'), slice(_, length('item_layouts') + 1));
+                if(entries && slice(input, -1) != ' ', delete(entries, -1));
+                return(if(entries, map(item_layouts, str('%s %s', join(' ', entries), _)), item_layouts));
+            ),
+            'case_sensitive' -> false
+        },
         'item_filter' -> {
             'type' -> 'term',
-            'options' -> keys(global_item_filters),
+            'suggest' -> global_default_item_filters,
             'case_sensitive' -> false
         },
         'item_layout' -> {
@@ -551,6 +570,7 @@ _itemToMap(slot, item, count, nbt) -> (
 );
 
 _giveCommand(item, nbt) -> (
+    if(type(nbt) == 'string', nbt = parse_nbt(nbt));
     return('give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_, true))) + ']', encode_nbt(nbt, true)), ''));
 );
 
@@ -581,8 +601,12 @@ _handleInvalidItems(item_tuples) -> (
     );
 );
 
+_isUnstackable(item) -> (
+    return(item != 'air' && stack_limit(item) == 1);
+);
+
 _handleUnstackableItems(item_tuples) -> (
-    unstackable_items = sort(_removeDuplicates(filter(map(item_tuples, _:0), !_isInvalidItem(_) && stack_limit(_) == 1)));
+    unstackable_items = sort(_removeDuplicates(filter(map(item_tuples, _:0), !_isInvalidItem(_) && _isUnstackable(_))));
     if(unstackable_items,
         if(
             global_settings:'invalid_items_mode' == 'error',
@@ -680,6 +704,43 @@ _scanStripes(from_pos, to_pos) -> (
     dy >= dx && dy >= dz,
         map(range(y1, y2 + sy, sy), l = []; volume(x1, _, z1, x2, _, z2, l += _); l)
    ));
+);
+
+itemScreen(items, name) -> (
+    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
+
+    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
+        name = str('\'{"text":"Page %d/%d","color":"%s","italic":false}\'', page_count % pages_length + 1, pages_length, global_color);
+        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', items_length)];
+        nbt = if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}});
+        inventory_set(screen, 49, 1, 'paper', nbt);
+    );
+
+    _setMenuItems(screen, page) -> (
+        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt)));
+    );
+
+    global_current_page:player() = 0;
+
+    screen = create_screen(player(), 'generic_9x6', name, _(screen, player, action, data, outer(pages), outer(items)) -> (
+        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
+            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
+            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
+            _setMenuItems(screen, page);
+        );
+        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
+    ));
+
+    _setMenuItems(screen, pages:0);
+
+    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
+    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
+    if(length(pages) > 1,
+        previous_page_name = str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color);
+        next_page_name = str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color);
+        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}));
+        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> next_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> next_page_name}}));
+    );
 );
 
 // MAIN
@@ -1041,44 +1102,11 @@ viewItemList(item_list) -> (
     item_list_path = str('item_lists/%s', item_list);
     if(list_files('item_lists', 'shared_text')~item_list_path == null, _error(str(global_error_messages:'ITEM_LIST_DOESNT_EXIST', item_list)));
 
-    entries = _readItemList(item_list);
-    items = filter(entries, [item, nbt] = _; item != 'air' && item_list()~item != null);
+    items = _readItemList(item_list);
+    items = filter(items, [item, nbt] = _; item != 'air' && item_list()~item != null);
     if(!items, _error(str(global_error_messages:'ITEM_LIST_EMPTY', item_list)));
 
-    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
-
-    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
-        name = str('\'{"text":"Page %d/%d","color":"%s","italic":false}\'', page_count % pages_length + 1, pages_length, global_color);
-        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', items_length)];
-        nbt = if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}});
-        inventory_set(screen, 49, 1, 'paper', nbt);
-    );
-
-    _setMenuItems(screen, page) -> (
-        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt)));
-    );
-
-    global_current_page:player() = 0;
-
-    screen = create_screen(player(), 'generic_9x6', item_list, _(screen, player, action, data, outer(pages), outer(items)) -> (
-        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
-            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
-            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
-            _setMenuItems(screen, page);
-        );
-        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
-    ));
-
-    _setMenuItems(screen, pages:0);
-
-    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
-    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
-    if(length(pages) > 1,
-        previous_page_name = str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color);
-        next_page_name = str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color);
-        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}));
-        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> next_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> next_page_name}}));
-    );
+    itemScreen(items, item_list)
 );
 
 // SETTINGS
@@ -1230,8 +1258,14 @@ printReplaceBlocksSetting() -> (
 );
 
 setReplaceBlocksSetting(bool) -> (
-    global_settings:'replace_blocks' = bool(bool);
-    print(format('f » ', 'g Replacing blocks has been ', if(bool, 'l enabled', 'r disabled')));
+    if(
+        bool == null,
+            global_settings:'replace_blocks' = global_default_settings:'replace_blocks';
+            print(format('f » ', 'g Replacing blocks has been ', if(global_settings:'replace_blocks', 'l enabled', 'r disabled'))),
+        // else
+            global_settings:'replace_blocks' = bool(bool);
+            print(format('f » ', 'g Replacing blocks has been ', if(global_settings:'replace_blocks', 'l enabled', 'r disabled')));
+    );
 );
 
 printSkipEmptySpotsSetting() -> (
@@ -1239,8 +1273,14 @@ printSkipEmptySpotsSetting() -> (
 );
 
 setSkipEmptySpotsSetting(bool) -> (
-    global_settings:'skip_empty_spots' = bool(bool);
-    print(format('f » ', 'g Skipping empty spots has been ', if(bool, 'l enabled', 'r disabled')));
+    if(
+        bool == null,
+            global_settings:'skip_empty_spots' = global_default_settings:'skip_empty_spots';
+            print(format('f » ', 'g Skipping empty spots has been ', if(global_settings:'skip_empty_spots', 'l enabled', 'r disabled'))),
+        // else
+            global_settings:'skip_empty_spots' = bool(bool);
+            print(format('f » ', 'g Skipping empty spots has been ', if(global_settings:'skip_empty_spots', 'l enabled', 'r disabled')));
+    )
 );
 
 printMinimalFillingSetting() -> (
@@ -1248,8 +1288,14 @@ printMinimalFillingSetting() -> (
 );
 
 setMinimalFillingSetting(bool) -> (
-    global_settings:'minimal_filling' = bool(bool);
-    print(format('f » ', 'g Minimal filling has been ', if(bool, 'l enabled', 'r disabled')));
+    if(
+        bool == null,
+            global_settings:'minimal_filling' = global_default_settings:'minimal_filling';
+            print(format('f » ', 'g Minimal filling has been ', if(bool, 'l enabled', 'r disabled'))),
+        // else
+            global_settings:'minimal_filling' = bool(bool);
+            print(format('f » ', 'g Minimal filling has been ', if(bool, 'l enabled', 'r disabled')));
+    );
 );
 
 printPreferUnstackables() -> (
@@ -1257,17 +1303,29 @@ printPreferUnstackables() -> (
 );
 
 setPreferUnstackables(bool) -> (
-    global_settings:'prefer_unstackables' = bool(bool);
-    print(format('f » ', 'g Preferring unstackables has been ', if(bool, 'l enabled', 'r disabled')));
+    if(
+        bool == null,
+            global_settings:'prefer_unstackables' = global_default_settings:'prefer_unstackables';
+            print(format('f » ', 'g Preferring unstackables has been ', if(global_settings:'prefer_unstackables', 'l enabled', 'r disabled'))),
+        // else
+            global_settings:'prefer_unstackables' = bool(bool);
+            print(format('f » ', 'g Preferring unstackables has been ', if(global_settings:'prefer_unstackables', 'l enabled', 'r disabled')));
+    );
 );
 
 printEncoderChestMaxFilling() -> (
-    print(format('f » ', 'g Max filling of encoder chests is ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
+    print(format('f » ', 'g Maximum filling of encoder chests is ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
 );
 
 setEncoderChestMaxFilling(bool) -> (
-    global_settings:'encoder_chest_max_filling' = bool(bool);
-    print(format('f » ', 'g Max filling of encoder chests has been ', if(bool, 'l enabled', 'r disabled')));
+    if(
+        bool == null,
+            global_settings:'encoder_chest_max_filling' = global_default_settings:'encoder_chest_max_filling';
+            print(format('f » ', 'g Maximum filling of encoder chests has been ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled'))),
+        // else
+            global_settings:'encoder_chest_max_filling' = bool(bool);
+            print(format('f » ', 'g Maximum filling of encoder chests has been ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
+    );
 );
 
 // DUMMY ITEM
@@ -1291,7 +1349,7 @@ setStackableDummyItem(item_tuple) -> (
             print(format('f » ', 'g The stackable dummy item has been reset')),
         // else
             [item, count, nbt] = item_tuple;
-            if(stack_limit(item) == 1, _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
+            if(_isUnstackable(item) || item == 'air', _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
             if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
             global_stackable_dummy_item = [item, nbt];
             print(format('f » ', 'g The stackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt))))
@@ -1322,7 +1380,7 @@ setUnstackableDummyItem(item_tuple) -> (
             print(format('f » ', 'g The unstackable dummy item has been reset')),
         // else
             [item, count, nbt] = item_tuple;
-            if(stack_limit(item) != 1, _error(global_error_messages:'ONLY_UNSTACKABLES_ALLOWED'));
+            if(!_isUnstackable(item), _error(global_error_messages:'ONLY_UNSTACKABLES_ALLOWED'));
             if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
             global_unstackable_dummy_item = [item, nbt];
             print(format('f » ', 'g The unstackable dummy item has been set to ', str('%s %s', global_color, item), if(nbt, str('^g %s', nbt))))
@@ -1336,18 +1394,44 @@ giveUnstackableDummyItem() -> (
 
 // ITEM FILTER
 
+_isValidItemFilter(item_filter) -> (
+    return(global_default_item_filters~item_filter != null || 2 <= number(item_filter~'^ss(\\d+)$') <= 15 || 2 <= number(item_filter~'^ssi_ss(\\d+)$') <= 12);
+);
+
+_formatItemFilter(item_filter) -> (
+    if(!_isValidItemFilter(item_filter), return(item_filter));
+
+    ssi_ss = number(item_filter~'^ssi_ss(\\d+)$');
+    ss = number(item_filter~'^ss(\\d+)$');
+
+    return(
+        if(
+            ss, str('SS%d', ss),
+            ssi_ss, str('SSI SS%d', ssi_ss),
+            title(replace(item_filter, '_', ' '))
+        )
+    );
+);
+
 _itemFilter(hopper, item_filter, item_tuple) -> (
+    if(!_isValidItemFilter(item_filter), return(false));
+
+    ssi_ss = number(item_filter~'^ssi_ss(\\d+)$');
+    ss = number(item_filter~'^ss(\\d+)$');
     if(
-        item_filter~'ssi_ss\\d', _ssiItemFilter(hopper, item_tuple, number(replace(item_filter, 'ssi_ss', '')), global_settings:'filter_item_amount', global_settings:'minimal_filling'),
-        item_filter~'ss\\d', _ssItemFilter(hopper, item_tuple, number(replace(item_filter, 'ss', '')), global_settings:'minimal_filling'),
+        ssi_ss, _ssiItemFilter(hopper, item_tuple, ssi_ss, global_settings:'filter_item_amount', global_settings:'minimal_filling'),
+        ss, _ssItemFilter(hopper, item_tuple, ss, global_settings:'minimal_filling'),
         item_filter == 'overstacking', _overstackingItemFilter(hopper, item_tuple, global_settings:'filter_item_amount', global_settings:'minimal_filling'),
         item_filter == 'box_sorter', _boxSorterFilter(hopper, item_tuple),
-        item_filter == 'stack_separation', _stackSeparationFilter(hopper, item_tuple)
+        item_filter == 'stack_separation', _stackSeparationFilter(hopper, item_tuple),
+        return(false)
     );
+    return(true);
 );
 
 _ssiItemFilter(hopper, item_tuple, signal_strength, amount, minimal) -> (
     [item, nbt] = item_tuple;
+
     total_dummy_amount = floor((ceil(5 * 64 / 14 * (signal_strength - 1)) - (amount + 1) * (64 / stack_limit(item))) / (64 / stack_limit(global_stackable_dummy_item:0)));
 
     inventory_set(hopper, 0, if(minimal, 1, amount), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt));
@@ -1368,11 +1452,23 @@ _ssiItemFilter(hopper, item_tuple, signal_strength, amount, minimal) -> (
 
 _ssItemFilter(hopper, item_tuple, signal_strength, minimal) -> (
     [item, nbt] = item_tuple;
-    [dummy_item, dummy_nbt] = global_stackable_dummy_item;
-    amount = floor((ceil(5 * 64 / 14 * (signal_strength - 1)) - 1 - 4 * (64 / stack_limit(dummy_item))) / (64 / stack_limit(item)));
+
+    total_amount = floor(ceil(5 * 64 / 14 * (signal_strength - 1)) - 1);
+    amount = min(stack_limit(item) - 1, floor((total_amount - 4 * (64 / stack_limit(global_stackable_dummy_item:0))) / (64 / stack_limit(item))));
+    total_dummy_amount = (total_amount - amount * (64 / stack_limit(item))) / (64 / stack_limit(global_stackable_dummy_item:0));
 
     inventory_set(hopper, 0, if(minimal, 1, amount), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt));
-    for(range(1, 5), inventory_set(hopper, _, 1, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt)));
+    for(range(1, 5),
+        [dummy_item, dummy_nbt] = global_stackable_dummy_item;
+        amount = min(total_dummy_amount - 4 + _, stack_limit(dummy_item));
+        total_dummy_amount += -amount;
+
+        if(amount == stack_limit(dummy_item) && global_settings:'prefer_unstackables',
+            [dummy_item, dummy_nbt] = global_unstackable_dummy_item;
+            amount = 1;
+        );
+        inventory_set(hopper, _, amount, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt));
+    );
 
     return(hopper);
 );
@@ -1437,13 +1533,13 @@ fillItemFiltersFromItemLayout(item_filter, from_pos, to_pos, item_layout) -> (
 );
 
 fillItemFilters(item_filter, items, from_pos, to_pos) -> (
-    if(global_item_filters~item_filter == null, _error(global_error_messages:'INVALID_ITEM_FILTER'));
+    if(!_isValidItemFilter(item_filter), _error(global_error_messages:'INVALID_ITEM_FILTER'));
     if(!items, _error(global_error_messages:'NO_ITEMS_PROVIDED'));
     if(length(filter(to_pos - from_pos, _ == 0)) < 2, _error(global_error_messages:'NOT_A_ROW_OF_BLOCKS'));
 
     _handleInvalidItems(items);
     _handleUnstackableItems(items);
-    if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+    if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
     fallback_item = if(
         global_settings:'invalid_items_mode' == 'dummy_item', global_stackable_dummy_item,
@@ -1469,7 +1565,7 @@ fillItemFilters(item_filter, items, from_pos, to_pos) -> (
         i += 1;
 
         if(item == 'air' && global_settings:'air_mode' == 'dummy_item', [item, nbt] = global_stackable_dummy_item);
-        if(_isInvalidItem(item) || stack_limit(item) == 1,
+        if(_isInvalidItem(item) || _isUnstackable(item),
             if(!fallback_item, continue());
             [item, nbt] = fallback_item;
         );
@@ -1479,7 +1575,7 @@ fillItemFilters(item_filter, items, from_pos, to_pos) -> (
         true;
     );
 
-    print(format('f » ', 'g Filled ', str('%s %s', global_color, affected_blocks), str('g  hopper%s with the ', if(affected_blocks == 1, '', 's')), str('%s %s', global_color, global_item_filters:item_filter || item_filter), 'g  item filter'));
+    print(format('f » ', 'g Filled ', str('%s %s', global_color, affected_blocks), str('g  hopper%s with the ', if(affected_blocks == 1, '', 's')), str('%s %s', global_color, _formatItemFilter(item_filter)), 'g  item filter'));
     run('playsound block.note_block.pling master @s');
 );
 
@@ -1510,12 +1606,12 @@ giveItemFilterFromItemLayout(item_filter, item_layout) -> (
 );
 
 giveItemFilter(item_filter, items) -> (
-    if(global_item_filters~item_filter == null, _error(global_error_messages:'INVALID_ITEM_FILTER'));
+    if(!_isValidItemFilter(item_filter), _error(global_error_messages:'INVALID_ITEM_FILTER'));
     if(!items, _error(global_error_messages:'NO_ITEMS_PROVIDED'));
 
     invalid_items = filter(map(items, _:0), _isInvalidItem(_));
     if(invalid_items, _error(str(global_error_messages:'INVALID_ITEMS', join(', ', sort(_removeDuplicates(invalid_items))))));
-    unstackable_items = filter(map(items, _:0), stack_limit(_) == 1);
+    unstackable_items = filter(map(items, _:0), _isUnstackable(_));
     if(unstackable_items, _error(str(global_error_messages:'CANT_USE_UNSTACKABLES', join(', ', sort(_removeDuplicates(unstackable_items))))));
 
     stx_data = {
@@ -1525,7 +1621,7 @@ giveItemFilter(item_filter, items) -> (
         }
     };
     item_maps = map(slice(items, 0, 27), [item, nbt] = _; _itemToMap(_i, item, 1, nbt));
-    hopper_name = str('{"text":"STX %s Item Filter","color":"%s","bold":true,"italic":false}', global_item_filters:item_filter || item_filter, global_color);
+    hopper_name = str('{"text":"STX %s Item Filter","color":"%s","bold":true,"italic":false}', _formatItemFilter(item_filter), global_color);
     hopper_lore = [str('[{"text":"» ","color":"dark_gray","italic":false},{"text":"%d","color":"%s","italic":false},{"text":" item%s","color":"gray","italic":false}]', length(items), global_color, if(length(items) == 1, '', 's'))];
     hopper_nbt = if(system_info('game_pack_version') >= 33,
         {
@@ -1548,7 +1644,7 @@ giveItemFilter(item_filter, items) -> (
 
     run(_giveCommand('hopper', hopper_nbt));
 
-    print(format('f » ', 'g You were given a ', str('%s %s', global_color, global_item_filters:item_filter || item_filter), str('g  item filter with %d item%s', length(items), if(length(items) == 1, '', 's'))));
+    print(format('f » ', 'g You were given a ', str('%s %s', global_color, _formatItemFilter(item_filter)), str('g  item filter with %d item%s', length(items), if(length(items) == 1, '', 's'))));
 );
 
 __on_item_filter_placed(block, player_facing, data) -> (
@@ -1560,7 +1656,7 @@ __on_item_filter_placed(block, player_facing, data) -> (
 
     _handleInvalidItems(items);
     _handleUnstackableItems(items);
-    if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+    if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
     fallback_item = if(
         global_settings:'invalid_items_mode' == 'dummy_item', global_stackable_dummy_item,
@@ -1576,7 +1672,7 @@ __on_item_filter_placed(block, player_facing, data) -> (
         [item, nbt] = items:_i;
 
         if(item == 'air' && global_settings:'air_mode' == 'dummy_item', [item, nbt] = global_stackable_dummy_item);
-        if(_isInvalidItem(item) || stack_limit(item) == 1,
+        if(_isInvalidItem(item) || _isUnstackable(item),
             if(!fallback_item, continue());
             [item, nbt] = fallback_item;
         );
@@ -1586,18 +1682,18 @@ __on_item_filter_placed(block, player_facing, data) -> (
         true;
     );
 
-    print(format('f » ', 'g Placed and filled ', str('%s %s', global_color, placed_blocks), str('g  hopper%s with the ', if(placed_blocks == 1, '', 's')), str('%s %s', global_color, global_item_filters:item_filter || item_filter), 'g  item filter'));
+    print(format('f » ', 'g Placed and filled ', str('%s %s', global_color, placed_blocks), str('g  hopper%s with the ', if(placed_blocks == 1, '', 's')), str('%s %s', global_color, _formatItemFilter(item_filter)), 'g  item filter'));
     sound('entity.evoker.cast_spell', origin_pos);
 );
 
 viewItemFilter(item_filter, item_tuple) -> (
-    if(global_item_filters~item_filter == null, _error(global_error_messages:'INVALID_ITEM_FILTER'));
+    if(!_isValidItemFilter(item_filter), _error(global_error_messages:'INVALID_ITEM_FILTER'));
 
     [item, count, nbt] = item_tuple || ['fern', null, null];
     if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
-    if(stack_limit(item) == 1, _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
+    if(_isUnstackable(item), _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
 
-    screen = create_screen(player(), 'hopper', str('%s Item Filter', global_item_filters:item_filter || item_filter), _(screen, player, action, data) -> (
+    screen = create_screen(player(), 'hopper', str('%s Item Filter', _formatItemFilter(item_filter)), _(screen, player, action, data) -> (
         if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' < 5), return('cancel'));
     ));
     _itemFilter(screen, item_filter, [item, nbt]);
@@ -1888,11 +1984,11 @@ __on_container_placed(block, player_facing, data) -> (
 // QUICK FILL
 
 quickFillItemFilter(item_filter, item_tuple, from_pos, to_pos) -> (
-    if(global_item_filters~item_filter == null, _error(global_error_messages:'INVALID_ITEM_FILTER'));
+    if(!_isValidItemFilter(item_filter), _error(global_error_messages:'INVALID_ITEM_FILTER'));
 
     [item, count, nbt] = item_tuple;
     if(system_info('game_pack_version') >= 33, nbt = nbt:'components');
-    if(stack_limit(item) == 1, _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
+    if(_isUnstackable(item), _error(global_error_messages:'ONLY_STACKABLES_ALLOWED'));
 
     trace = query(player(), 'trace', 5, 'blocks');
     if(!from_pos,
@@ -1914,7 +2010,7 @@ quickFillItemFilter(item_filter, item_tuple, from_pos, to_pos) -> (
         );
     );
 
-    print(format('f » ', 'g Filled ', str('%s %s', global_color, affected_blocks), str('g  hopper%s with the ', if(affected_blocks == 1, '', 's')), str('%s %s', global_color, global_item_filters:item_filter || item_filter), 'g  item filter'));
+    print(format('f » ', 'g Filled ', str('%s %s', global_color, affected_blocks), str('g  hopper%s with the ', if(affected_blocks == 1, '', 's')), str('%s %s', global_color, _formatItemFilter(item_filter)), 'g  item filter'));
     run('playsound block.note_block.pling master @s');
 );
 
@@ -2020,7 +2116,7 @@ _MISChest(chest, items) -> (
         [item, nbt] = items:_;
 
         if(item == 'air' && global_settings:'air_mode' == 'dummy_item', [item, nbt] = global_stackable_dummy_item);
-        if(_isInvalidItem(item) || stack_limit(item) == 1,
+        if(_isInvalidItem(item) || _isUnstackable(item),
             if(!fallback_item, continue());
             [item, nbt] = fallback_item;
         );
@@ -2057,7 +2153,7 @@ fillMISChests(from_pos, to_pos, item_list_string) -> (
         if(i >= length(item_lists), continue());
 
         items = item_list_contents:i;
-        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
         i += 1;
 
@@ -2082,7 +2178,7 @@ giveMISChest(item_list_string) -> (
 
     invalid_items = filter(map(all_items, _:0), _isInvalidItem(_));
     if(invalid_items, _error(str(global_error_messages:'INVALID_ITEMS', join(', ', sort(_removeDuplicates(invalid_items))))));
-    unstackable_items = filter(map(all_items, _:0), stack_limit(_) == 1);
+    unstackable_items = filter(map(all_items, _:0), _isUnstackable(_));
     if(unstackable_items, _error(str(global_error_messages:'CANT_USE_UNSTACKABLES', join(', ', sort(_removeDuplicates(unstackable_items))))));
 
     stx_data = {
@@ -2136,7 +2232,7 @@ __on_MIS_chest_placed(block, player_facing, data) -> (
         if(global_settings:'replace_blocks' || air(pos1), set(pos1, 'chest', {'facing' -> chest_facing, 'type' -> second_chest_direction}, {'CustomName' -> null}));
 
         items = chest_contents:_i;
-        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
         skipped_items = _MISChest(block(pos), items);
         if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the MIS chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
@@ -2171,7 +2267,7 @@ _encoderChest(chest, items, signal_strength) -> (
 
         [item, nbt] = if(_ < length(items), items:(i+=1), global_stackable_dummy_item);
 
-        if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || stack_limit(item) == 1, [item, nbt] = global_stackable_dummy_item);
+        if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || _isUnstackable(item), [item, nbt] = global_stackable_dummy_item);
 
         inventory_set(chest, _, 2, item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt));
 
@@ -2208,7 +2304,7 @@ fillEncoderChests(signal_strength, from_pos, to_pos, item_list_string) -> (
         if(i >= length(item_lists), continue());
 
         items = item_list_contents:i;
-        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
         i += 1;
 
@@ -2218,6 +2314,36 @@ fillEncoderChests(signal_strength, from_pos, to_pos, item_list_string) -> (
     );
 
     print(format('f » ', 'g Filled ', str('%s %s', global_color, affected_blocks), str('g  Encoder Chest%s', if(affected_blocks == 1, '', 's'))));
+    run('playsound block.note_block.pling master @s');
+);
+
+fixEncoderChests(signal_strength, from_pos, to_pos) -> (
+    trace = query(player(), 'trace', 5, 'blocks');
+    if(!from_pos,
+        if(!trace, _error(global_error_messages:'NOT_LOOKING_AT_ANY_BLOCK'));
+        from_pos = trace;
+    );
+    if(!to_pos,
+        if(inventory_has_items(from_pos) == null, _error(global_error_messages:'NOT_A_CONTAINER'));
+        to_pos = from_pos;
+    );
+
+    affected_blocks = volume(from_pos, to_pos,
+        block = _;
+        if(block != 'chest' && block != 'barrel', continue());
+
+        items = filter(inventory_get(block), _ && !_isUnstackable(_:0));
+        items = map(items, [_:0, if(system_info('game_pack_version') >= 33, _:2:'components', _:2)]);
+        items = filter(items, !has(_:1, if(system_info('game_pack_version') >= 33, 'minecraft:custom_name', 'display.Name')));
+        items = _removeDuplicates(items);
+
+        if(!length(items), continue());
+
+        _encoderChest(block, items, signal_strength);
+        true;
+    );
+
+    print(format('f » ', 'g Fixed ', str('%s %s', global_color, affected_blocks), str('g  Encoder Chest%s', if(affected_blocks == 1, '', 's'))));
     run('playsound block.note_block.pling master @s');
 );
 
@@ -2233,7 +2359,7 @@ giveEncoderChest(signal_strength, item_list_string) -> (
 
     invalid_items = filter(map(all_items, _:0), _isInvalidItem(_));
     if(invalid_items, _error(str(global_error_messages:'INVALID_ITEMS', join(', ', sort(_removeDuplicates(invalid_items))))));
-    unstackable_items = filter(map(all_items, _:0), stack_limit(_) == 1);
+    unstackable_items = filter(map(all_items, _:0), _isUnstackable(_));
     if(unstackable_items, _error(str(global_error_messages:'CANT_USE_UNSTACKABLES', join(', ', sort(_removeDuplicates(unstackable_items))))));
 
     stx_data = {
@@ -2289,7 +2415,7 @@ __on_encoder_chest_placed(block, player_facing, data) -> (
         if(global_settings:'replace_blocks' || air(pos1), set(pos1, 'chest', {'facing' -> chest_facing, 'type' -> second_chest_direction}, {'CustomName' -> null}));
 
         items = chest_contents:_i;
-        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && stack_limit(_:0) != 1));
+        if(global_settings:'invalid_items_mode' == 'skip', items = filter(items, !_isInvalidItem(_:0) && !_isUnstackable(_:0)));
 
         skipped_items = _encoderChest(block(pos), items, signal_strength);
         if(skipped_items, print(format('f » ', 'rb WARNING!', str('g  Not enough space in the encoder chest at %s for %d items: %s', pos(block), length(skipped_items), join(', ', map(skipped_items, _:0))))));
@@ -2583,6 +2709,45 @@ giveBundle(items) -> (
     print(format('f » ', 'g You were given a bundle with ', str('%s %d', global_color, length(items)), str('g  item%s', if(length(items) == 1, '', 's'))));
 );
 
+// MISSING ITEMS
+
+missingItemsFromItemLists(item_list, item_list_string) -> (
+    item_lists = split(' ', item_list_string);
+    if(!item_lists, _error(global_error_messages:'NO_ITEM_LISTS_PROVIDED'));
+
+    invalid_item_lists = filter(item_lists, list_files('item_lists', 'shared_text')~str('item_lists/%s', _) == null);
+    if(invalid_item_lists, _error(str(global_error_messages:'INVALID_ITEM_LISTS', join(', ', sort(_removeDuplicates(invalid_item_lists))))));
+
+    item_list_contents = map(item_lists, _readItemList(_));
+    all_items = reduce(item_list_contents, [..._a, ..._], []);
+
+    missingItems(item_list, all_items);
+);
+
+missingItemsFromItemLayouts(item_list, item_layout_string) -> (
+    item_layouts = split(' ', item_layout_string);
+    if(!item_layouts, _error(global_error_messages:'NO_ITEM_LAYOUTS_PROVIDED'));
+
+    invalid_item_layouts = filter(item_layouts, list_files('item_layouts', 'shared_text')~str('item_layouts/%s', _) == null);
+    if(invalid_item_layouts, _error(str(global_error_messages:'INVALID_ITEM_LAYOUTS', join(', ', sort(_removeDuplicates(invalid_item_layouts))))));
+
+    item_layout_contents = map(item_layouts, _readItemLayout(_));
+    all_items = reduce(item_layout_contents, [..._a, ..._], []);
+
+    missingItems(item_list, all_items);
+);
+
+missingItems(item_list, current_items) -> (
+    item_list_path = str('item_lists/%s', item_list);
+    if(list_files('item_lists', 'shared_text')~item_list_path == null, _error(str(global_error_messages:'ITEM_LIST_DOESNT_EXIST', item_list)));
+
+    items = _readItemList(item_list);
+    missing_items = filter(items, current_items~_ == null);
+    itemScreen(missing_items, 'Missing Items');
+
+    print(format('f » ', 'g Showing ', str('%s %d', global_color, length(missing_items)), str('g  missing item%s', if(length(missing_items) == 1, '', 's'))));
+);
+
 // FULL BOXES
 
 getFullBox(item_tuple, shulker_box_color) -> (
@@ -2625,11 +2790,15 @@ __on_player_right_clicks_block(player, item_tuple, hand, block, face, hitvec) ->
     return('cancel');
 );
 
-__on_close() -> (
+saveConfig() -> (
     data = {
         ...if(global_stackable_dummy_item != global_default_stackable_dummy_item, {'stackable_dummy_item' -> global_stackable_dummy_item}, {}),
         ...if(global_unstackable_dummy_item != global_default_unstackable_dummy_item, {'unstackable_dummy_item' -> global_unstackable_dummy_item}, {}),
         ...global_settings
     };
     write_file('config', 'json', data);
+);
+
+__on_close() -> (
+    saveConfig();
 );
