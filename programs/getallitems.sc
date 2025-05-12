@@ -36,7 +36,9 @@ global_survival_unobtainable_items = [
     'debug_stick',
     'frogspawn',
     'trial_spawner',
-    'vault'
+    'vault',
+    'test_block',
+    'test_instance_block'
 ];
 if(system_info('game_data_version') < 2825, global_survival_unobtainable_items += 'spore_blossom'); // 1.18 Experimental 1
 if(system_info('game_data_version') < 3066, global_survival_unobtainable_items += 'sculk_sensor'); // Deep Dark Experimental Snapshot 1
