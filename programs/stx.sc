@@ -531,24 +531,34 @@ _removeDuplicates(list) -> filter(list, list~_ == _i);
 
 // UTILITY FUNCTIONS
 
+_parseEntry(entry) -> (
+    i = split(entry)~'{';
+    return(
+        if(i != null,
+            [slice(entry, 0, i) || null, parse_nbt(slice(entry, i))],
+        // else
+            [entry || null, null]
+        );
+    );
+);
+
 _readItemList(item_list) -> (
     item_list_path = str('item_lists/%s', item_list);
-    regex = '(\\w+)(\\{.+\\})?';
-    entries = map(filter(read_file(item_list_path, 'shared_text'), _), results = _~regex; [lower(results:0), results:1 || null]);
+    entries = map(filter(read_file(item_list_path, 'shared_text'), _), _parseEntry(_));
     return(entries);
 );
 
 _itemToString(item_tuple) -> (
     [item, nbt] = item_tuple;
-    return(item + (nbt || ''));
+    return(item + if(nbt, encode_nbt(nbt, true), ''));
 );
 
 _itemToMap(slot, item, count, nbt) -> (
     if(
         system_info('game_pack_version') >= 33,
-            {'slot' -> slot, 'item' -> {'id' -> item, 'count' -> count, 'components' -> if(nbt, parse_nbt(nbt), {})}},
+            {'slot' -> slot, 'item' -> {'id' -> item, 'count' -> count, if(nbt, 'components' -> nbt, ...{})}},
         // else
-            {'Slot' -> slot, 'id' -> item, 'Count' -> count, ...if(nbt, {'tag' -> parse_nbt(nbt)}, {})}
+            {'Slot' -> slot, 'id' -> item, 'Count' -> count, if(nbt, 'tag' -> nbt, ...{})}
     );
 );
 
@@ -556,15 +566,14 @@ _formatTextComponent(text_component) -> (
     return(
         if(
             system_info('game_pack_version') >= 62, text_component,
-            system_info('game_pack_version') >= 33, encode_json(text_component),
-            encode_json(encode_json(text_component))
+            encode_json(text_component)
         );
     );
 );
 
 _giveCommand(item, nbt) -> (
-    if(type(nbt) == 'string', nbt = parse_nbt(nbt));
-    command = 'give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_))) + ']', nbt), '');
+    if(type(nbt) == 'nbt', nbt = parse_nbt(nbt));
+    command = 'give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_, true))) + ']', encode_nbt(nbt, true)), '');
     return(command);
 );
 
@@ -706,11 +715,11 @@ itemScreen(items, name) -> (
     _setMenuInfo(screen, page_count, pages_length, items_length) -> (
         name = _formatTextComponent({'text' -> str('Page %d/%d', page_count % pages_length + 1, pages_length), 'color' -> global_color, 'italic' -> false});
         lore = [_formatTextComponent({'text' -> str('%s entries', items_length), 'color' -> 'gray', 'italic' -> false})];
-        inventory_set(screen, 49, 1, 'paper', if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}), {'display' -> {'Name' -> name, 'Lore' -> lore}}));
+        inventory_set(screen, 49, 1, 'paper', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}}), true));
     );
 
     _setMenuItems(screen, page) -> (
-        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt)));
+        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true)));
     );
 
     global_current_page:player() = 0;
@@ -731,8 +740,8 @@ itemScreen(items, name) -> (
     if(length(pages) > 1,
         previous_page_name = _formatTextComponent({'text' -> 'Previous Page', 'color' -> global_color, 'italic' -> false});
         next_page_name = _formatTextComponent({'text' -> 'Next Page', 'color' -> global_color, 'italic' -> false});
-        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}), {'display' -> {'Name' -> previous_page_name}}));
-        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}), {'display' -> {'Name' -> previous_page_name}}));
+        inventory_set(screen, 48, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
+        inventory_set(screen, 50, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
     );
 );
 
@@ -741,8 +750,10 @@ itemScreen(items, name) -> (
 config = read_file('config', 'json');
 global_default_stackable_dummy_item = ['structure_void', if(system_info('game_pack_version') >= 33, {'custom_name' -> _formatTextComponent('╚═Dummy═╝')}, {'display' -> {'Name' -> _formatTextComponent('╚═Dummy═╝')}})];
 global_default_unstackable_dummy_item = ['shears', null];
-global_stackable_dummy_item = config:'stackable_dummy_item' || copy(global_default_stackable_dummy_item);
-global_unstackable_dummy_item = config:'unstackable_dummy_item' || copy(global_default_unstackable_dummy_item);
+stackable_dummy_item = config:'stackable_dummy_item';
+global_stackable_dummy_item = if(stackable_dummy_item && type(stackable_dummy_item) == 'string', _parseEntry(stackable_dummy_item), copy(global_default_stackable_dummy_item));
+unstackable_dummy_item = config:'unstackable_dummy_item';
+global_unstackable_dummy_item = if(unstackable_dummy_item && type(unstackable_dummy_item) == 'string', _parseEntry(unstackable_dummy_item), copy(global_default_unstackable_dummy_item));
 global_default_settings = {
         'shulker_box_color' -> 'default',
         'item_frame_type' -> 'item_frame', // item_frame | glow_item_frame
@@ -1453,7 +1464,7 @@ _ssiItemFilter(hopper, item_tuple, signal_strength, amount, minimal) -> (
 
     total_dummy_amount = floor((ceil(5 * 64 / 14 * (signal_strength - 1)) - (amount + 1) * (64 / stack_limit(item))) / (64 / stack_limit(global_stackable_dummy_item:0)));
 
-    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, 5),
         [dummy_item, dummy_nbt] = global_stackable_dummy_item;
         amount = min(total_dummy_amount - 4 + _, stack_limit(dummy_item));
@@ -1463,7 +1474,7 @@ _ssiItemFilter(hopper, item_tuple, signal_strength, amount, minimal) -> (
             [dummy_item, dummy_nbt] = global_unstackable_dummy_item;
             amount = 1;
         );
-        inventory_set(hopper, _, amount, dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> dummy_nbt, 'id' -> dummy_item}), dummy_nbt));
+        inventory_set(hopper, _, amount, dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt), true));
     );
 
     return(hopper);
@@ -1476,7 +1487,7 @@ _ssItemFilter(hopper, item_tuple, signal_strength, minimal) -> (
     amount = min(stack_limit(item) - 1, floor((total_amount - 4 * (64 / stack_limit(global_stackable_dummy_item:0))) / (64 / stack_limit(item))));
     total_dummy_amount = (total_amount - amount * (64 / stack_limit(item))) / (64 / stack_limit(global_stackable_dummy_item:0));
 
-    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, 5),
         [dummy_item, dummy_nbt] = global_stackable_dummy_item;
         amount = min(total_dummy_amount - 4 + _, stack_limit(dummy_item));
@@ -1486,7 +1497,7 @@ _ssItemFilter(hopper, item_tuple, signal_strength, minimal) -> (
             [dummy_item, dummy_nbt] = global_unstackable_dummy_item;
             amount = 1;
         );
-        inventory_set(hopper, _, amount, dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> dummy_nbt, 'id' -> dummy_item}), dummy_nbt));
+        inventory_set(hopper, _, amount, dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt), true));
     );
 
     return(hopper);
@@ -1498,10 +1509,10 @@ _overstackingItemFilter(hopper, item_tuple, amount, minimal) -> (
     [unstackable_dummy_item, unstackable_dummy_nbt] = global_unstackable_dummy_item;
     dummy_amount = floor((64 - (amount + 1) * (64 / stack_limit(item))) / (64 / stack_limit(dummy_item)));
 
-    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
-    inventory_set(hopper, 1, dummy_amount, dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> dummy_nbt, 'id' -> dummy_item}), dummy_nbt));
+    inventory_set(hopper, 0, if(minimal, 1, amount), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
+    inventory_set(hopper, 1, dummy_amount, dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt), true));
     inventory_set(hopper, 2, 2, if(system_info('game_pack_version') >= 33, 'shulker_box', ...['enchanted_book', {'StoredEnchantments' -> [{'id' -> 'vanishing_curse', 'lvl' -> 1}]}]));
-    for(range(3, 5), inventory_set(hopper, _, 1, unstackable_dummy_item, unstackable_dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> unstackable_dummy_nbt, 'id' -> unstackable_dummy_item}), unstackable_dummy_nbt)));
+    for(range(3, 5), inventory_set(hopper, _, 1, unstackable_dummy_item, unstackable_dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> unstackable_dummy_nbt, 'id' -> unstackable_dummy_item}, unstackable_dummy_nbt), true)));
 
     return(hopper);
 );
@@ -1509,7 +1520,7 @@ _overstackingItemFilter(hopper, item_tuple, amount, minimal) -> (
 _boxSorterFilter(hopper, item_tuple) -> (
     [item, nbt] = item_tuple;
 
-    inventory_set(hopper, 0, 1, item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(hopper, 0, 1, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, 5), inventory_set(hopper, _, 1, 'shulker_box'));
 
     return(hopper);
@@ -1519,8 +1530,8 @@ _stackSeparationFilter(hopper, item_tuple) -> (
     [item, nbt] = item_tuple;
     [dummy_item, dummy_nbt] = if(global_settings:'prefer_unstackables', global_unstackable_dummy_item, global_stackable_dummy_item);
 
-    inventory_set(hopper, 0, stack_limit(item) - 1, item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
-    for(range(1, 5), inventory_set(hopper, _, stack_limit(dummy_item), dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> dummy_nbt, 'id' -> dummy_item}), dummy_nbt)));
+    inventory_set(hopper, 0, stack_limit(item) - 1, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
+    for(range(1, 5), inventory_set(hopper, _, stack_limit(dummy_item), dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt)), true));
 
     return(hopper);
 );
@@ -1751,7 +1762,7 @@ _emptyBoxes(block, count) -> (
 _full(block, item_tuple) -> (
     [item, nbt] = item_tuple;
 
-    loop(inventory_size(block), inventory_set(block, _, stack_limit(item), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt)));
+    loop(inventory_size(block), inventory_set(block, _, stack_limit(item), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true)));
 );
 
 _fullBoxes(block, item_tuple) -> (
@@ -1759,36 +1770,36 @@ _fullBoxes(block, item_tuple) -> (
 
     shulker_box = _getShulkerBoxString(global_settings:'shulker_box_color');
     shulker_box_nbt = _generateFullShulkerBox(item, nbt);
-    loop(inventory_size(block), inventory_set(block, _, 1, shulker_box, if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> shulker_box_nbt, 'id' -> shulker_box}), shulker_box_nbt)));
+    loop(inventory_size(block), inventory_set(block, _, 1, shulker_box, encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> shulker_box_nbt, 'id' -> shulker_box}, shulker_box_nbt), true)));
 );
 
 _prefill(block, item_tuple) -> (
     [item, nbt] = item_tuple;
     [dummy_item, dummy_nbt] = global_stackable_dummy_item;
 
-    inventory_set(block, 0, stack_limit(item), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
-    for(range(1, inventory_size(block)), inventory_set(block, _, 1, dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> dummy_nbt, 'id' -> dummy_item}), dummy_nbt)));
+    inventory_set(block, 0, stack_limit(item), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
+    for(range(1, inventory_size(block)), inventory_set(block, _, 1, dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt), true)));
 );
 
 _prefillUnstackables(block, item_tuple) -> (
     [item, nbt] = item_tuple;
     [dummy_item, dummy_nbt] = global_unstackable_dummy_item;
 
-    inventory_set(block, 0, stack_limit(item), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(block, 0, stack_limit(item), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, inventory_size(block)), inventory_set(block, _, 1, ...global_unstackable_dummy_item));
 );
 
 _singleItem(block, item_tuple) -> (
     [item, nbt] = item_tuple;
 
-    inventory_set(block, 0, 1, item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(block, 0, 1, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, inventory_size(block)), inventory_set(block, _, 0));
 );
 
 _singleStack(block, item_tuple) -> (
     [item, nbt] = item_tuple;
 
-    inventory_set(block, 0, stack_limit(item), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+    inventory_set(block, 0, stack_limit(item), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     for(range(1, inventory_size(block)), inventory_set(block, _, 0));
 );
 
@@ -1797,7 +1808,7 @@ _singleFullBox(block, item_tuple) -> (
 
     shulker_box = _getShulkerBoxString(global_settings:'shulker_box_color');
     shulker_box_nbt = _generateFullShulkerBox(item, nbt);
-    inventory_set(block, 0, 1, shulker_box, if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> shulker_box_nbt, 'id' -> shulker_box}), shulker_box_nbt));
+    inventory_set(block, 0, 1, shulker_box, encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> shulker_box_nbt, 'id' -> shulker_box}, shulker_box_nbt), true));
     for(range(1, inventory_size(block)), inventory_set(block, _, 0));
 );
 
@@ -2206,7 +2217,7 @@ _MISChest(chest, items) -> (
             [item, nbt] = fallback_item;
         );
 
-        inventory_set(chest, _, 2, item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+        inventory_set(chest, _, 2, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
     );
 
     return(skipped_items);
@@ -2351,7 +2362,7 @@ _encoderChest(chest, items, signal_strength) -> (
                 // else
                     global_stackable_dummy_item
             );
-            inventory_set(chest, _, count / (64 / stack_limit(item)), item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+            inventory_set(chest, _, count / (64 / stack_limit(item)), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
             amount += -count;
             continue();
         );
@@ -2360,7 +2371,7 @@ _encoderChest(chest, items, signal_strength) -> (
 
         if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || _isUnstackable(item), [item, nbt] = global_stackable_dummy_item);
 
-        inventory_set(chest, _, 2, item, nbt && if(system_info('game_pack_version') >= 33, encode_nbt({'components' -> nbt, 'id' -> item}), nbt));
+        inventory_set(chest, _, 2, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
 
         if(item != 'air', amount += -2 * (64 / stack_limit(item)));
     );
@@ -2689,7 +2700,7 @@ __on_item_frame_placed(item_frame_type, origin_pos, item_frame_facing, player_fa
             [item, nbt] = fallback_item;
         );
 
-        spawn(item_frame_type, pos, {'Facing' -> global_directions~item_frame_facing, 'Item' -> if(system_info('game_pack_version') >= 33, {'id' -> item, 'components' -> nbt}, {'id' -> item, 'Count' -> 1, 'tag' -> nbt})});
+        spawn(item_frame_type, pos, encode_nbt({'Facing' -> global_directions~item_frame_facing, 'Item' -> if(system_info('game_pack_version') >= 33, {'id' -> item, 'components' -> nbt}, {'id' -> item, 'Count' -> 1, 'tag' -> nbt})}, true));
     );
 
     print(format('f » ', 'g Placed ', str('%s %s', global_color, spawned_item_frames), str('g  item frame%s', if(spawned_item_frames == 1, '', 's'))));
@@ -2760,7 +2771,11 @@ giveMixedChests(items, mode) -> (
         chest_nbt = if(system_info('game_pack_version') >= 33,
             {
                 'container' -> item_maps,
-                'custom_name' -> chest_name
+                'custom_name' -> chest_name,
+                if(system_info('game_pack_version') >= 64, 
+                    'tooltip_display' -> {'hidden_components' -> ['container']},
+                    'hide_additional_tooltip' -> {}
+                )
             },
             {
                 'BlockEntityTag' -> {'Items' -> item_maps},
@@ -2898,8 +2913,18 @@ __on_player_right_clicks_block(player, item_tuple, hand, block, face, hitvec) ->
 
 saveConfig() -> (
     data = {
-        ...if(global_stackable_dummy_item != global_default_stackable_dummy_item, {'stackable_dummy_item' -> global_stackable_dummy_item}, {}),
-        ...if(global_unstackable_dummy_item != global_default_unstackable_dummy_item, {'unstackable_dummy_item' -> global_unstackable_dummy_item}, {}),
+        if(
+            global_stackable_dummy_item != global_default_stackable_dummy_item,
+                'stackable_dummy_item' -> _itemToString(global_stackable_dummy_item),
+            // else
+                ...{}
+        ),
+        if(
+            global_unstackable_dummy_item != global_default_unstackable_dummy_item,
+                'unstackable_dummy_item' -> _itemToString(global_unstackable_dummy_item),
+            // else
+                ...{}
+        ),
         ...global_settings
     };
     write_file('config', 'json', data);
