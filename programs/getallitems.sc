@@ -80,6 +80,15 @@ __config() -> {
     'scope' -> 'player'
 };
 
+_itemToMap(slot, item, count, nbt) -> (
+    if(
+        system_info('game_pack_version') >= 33,
+            {'slot' -> slot, 'item' -> {'id' -> item, 'count' -> count, if(nbt, 'components' -> nbt, ...{})}},
+        // else
+            {'Slot' -> slot, 'id' -> item, 'Count' -> count, if(nbt, 'tag' -> nbt, ...{})}
+    );
+);
+
 menu() -> (
     texts = [
        'fs ' + ' ' * 80, ' \n',
@@ -116,7 +125,7 @@ giveChests(category, stackability) -> (
     shulker_boxes = map(range(ceil(length(items) / 27)), map(slice(items, _ * 27, min(length(items), (_ + 1) * 27)), [item, nbt] = _; if(system_info('game_pack_version') >= 33, {'slot' -> _i, 'item' -> {'id' -> item, 'components' -> nbt || {}}}, {'Slot' -> _i, 'id' -> item, 'Count' -> 1, ...if(nbt, {'tag' -> nbt}, {})})));
     loop(ceil(length(items) / 27 / 27),
         chest_contents = map(slice(shulker_boxes, _ * 27, min(ceil(length(items) / 27), (_ + 1) * 27)), if(system_info('game_pack_version') >= 33, {'slot' -> _i, 'item' -> {'id' -> 'white_shulker_box', 'components' -> {'container' -> _}}}, {'Slot' -> _i, 'id' -> 'white_shulker_box', 'Count' -> 1, 'tag' -> {'BlockEntityTag' -> {'Items' -> _}}}));
-        run('/give @s chest' + if(system_info('game_pack_version') >= 33, str('[container=%s]', encode_nbt(chest_contents)), encode_nbt({'BlockEntityTag' -> {'Items' -> chest_contents}})));
+        run('/give @s chest' + if(system_info('game_pack_version') >= 33, str('[container=%s]', encode_nbt(chest_contents, true)), encode_nbt({'BlockEntityTag' -> {'Items' -> chest_contents}}, true)));
     );
 );
 
@@ -125,7 +134,7 @@ showScreen(category, stackability) -> (
     screen = create_screen(player(), 'generic_9x6', str('%s | %d items', global_obtainabilities:category, length(items)));
     loop(ceil(length(items) / 27), 
         shulker_box_items = slice(items, _ * 27, min(length(items), (_ + 1) * 27));
-        shulker_box_contents = map(shulker_box_items, [item, nbt] = _; if(system_info('game_pack_version') >= 33, {'slot' -> _i, 'item' -> {'id' -> item, 'components' -> nbt || {}}}, {'Slot' -> _i, 'id' -> item, 'Count' -> 1, ...if(nbt, {'tag' -> nbt}, {})}));
-        inventory_set(screen, _, 1, 'white_shulker_box', if(system_info('game_pack_version') >= 33, {'components' -> {'container' -> shulker_box_contents}, 'id' -> 'white_shulker_box'}, {'BlockEntityTag' -> {'Items' -> shulker_box_contents}}));
+        shulker_box_contents = map(shulker_box_items, [item, nbt] = _; _itemToMap(_i, item, 1, nbt));
+        inventory_set(screen, _, 1, 'white_shulker_box', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'container' -> shulker_box_contents}, 'id' -> 'white_shulker_box'}, {'BlockEntityTag' -> {'Items' -> shulker_box_contents}}), true));
     );
 );

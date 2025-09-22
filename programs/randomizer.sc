@@ -193,35 +193,55 @@ _removeDuplicates(list) -> filter(list, list~_ == _i);
 
 // UTILITY FUNCTIONS
 
+_parseEntry(entry) -> (
+    i = split(entry)~'{';
+    return(
+        if(i != null,
+            [slice(entry, 0, i) || null, parse_nbt(slice(entry, i))],
+        // else
+            [entry || null, null]
+        );
+    );
+);
+
 _readTable(table) -> (
-    regex = '(\\w+)(\\{.+\\})?';
-    entries = map(read_file(table, 'text'), results = _~regex; [lower(results:0), results:1 || null]);
+    entries = map(read_file(table, 'text'), _parseEntry(_));
     return(filter(entries, _ && _:0 != 'air' && item_list()~(_:0) != null));
 );
 
 _readItemList(item_list) -> (
     item_list_path = str('item_lists/%s', item_list);
-    regex = '(\\w+)(\\{.+\\})?';
-    entries = map(filter(read_file(item_list_path, 'shared_text'), _), results = _~regex; [lower(results:0), results:1 || null]);
+    entries = map(filter(read_file(item_list_path, 'shared_text'), _), _parseEntry(_));
     return(entries);
 );
 
-_itemToString(item_duple) -> (
-    [item, nbt] = item_duple;
-    return(item + (nbt || ''));
+_itemToString(item_tuple) -> (
+    [item, nbt] = item_tuple;
+    return(item + if(nbt, encode_nbt(nbt, true), ''));
 );
 
 _itemToMap(slot, item, count, nbt) -> (
     if(
         system_info('game_pack_version') >= 33,
-            {'slot' -> slot, 'item' -> {'id' -> item, 'count' -> count, 'components' -> if(nbt, parse_nbt(nbt), {})}},
+            {'slot' -> slot, 'item' -> {'id' -> item, 'count' -> count, if(nbt, 'components' -> nbt, ...{})}},
         // else
-            {'Slot' -> slot, 'id' -> item, 'Count' -> count, ...if(nbt, {'tag' -> parse_nbt(nbt)}, {})}
+            {'Slot' -> slot, 'id' -> item, 'Count' -> count, if(nbt, 'tag' -> nbt, ...{})}
+    );
+);
+
+_formatTextComponent(text_component) -> (
+    return(
+        if(
+            system_info('game_pack_version') >= 62, text_component,
+            encode_json(text_component)
+        );
     );
 );
 
 _giveCommand(item, nbt) -> (
-    return('give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_, true))) + ']', encode_nbt(nbt, true)), ''));
+    if(type(nbt) == 'nbt', nbt = parse_nbt(nbt));
+    command = 'give @s ' + item + if(nbt, if(system_info('game_pack_version') >= 33, '[' + join(',', map(nbt, _ + '=' + encode_nbt(nbt:_, true))) + ']', encode_nbt(nbt, true)), '');
+    return(command);
 );
 
 _getItemFromBlock(block) -> (
@@ -272,6 +292,42 @@ _getReadingComparators(pos) -> (
 
 _updateComparators(block) -> (
     for(_getReadingComparators(block), update(_));
+);
+
+_itemScreen(items, name) -> (
+    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
+
+    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
+        name = _formatTextComponent({'text' -> str('Page %d/%d', page_count % pages_length + 1, pages_length), 'color' -> global_color, 'italic' -> false});
+        lore = [_formatTextComponent({'text' -> str('%s entries', items_length), 'color' -> 'gray', 'italic' -> false})];
+        inventory_set(screen, 49, 1, 'paper', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}}), true));
+    );
+
+    _setMenuItems(screen, page) -> (
+        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true)));
+    );
+
+    global_current_page:player() = 0;
+
+    screen = create_screen(player(), 'generic_9x6', name, _(screen, player, action, data, outer(pages), outer(items)) -> (
+        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
+            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
+            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
+            _setMenuItems(screen, page);
+        );
+        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
+    ));
+
+    _setMenuItems(screen, pages:0);
+
+    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> if(system_info('game_pack_version') >= 64, {'tooltip_display' -> {'hide_tooltip' -> true}}, {'hide_tooltip' -> {}}), 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> _formatTextComponent('')}})));
+    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
+    if(length(pages) > 1,
+        previous_page_name = _formatTextComponent({'text' -> 'Previous Page', 'color' -> global_color, 'italic' -> false});
+        next_page_name = _formatTextComponent({'text' -> 'Next Page', 'color' -> global_color, 'italic' -> false});
+        inventory_set(screen, 48, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
+        inventory_set(screen, 50, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
+    );
 );
 
 _getRandomContents(mode, items, size) -> (
@@ -617,38 +673,7 @@ viewTable(table) -> (
     items = filter(entries, [item, nbt] = _; item != 'air' && item_list()~item != null);
     if(!items, _error(str(global_error_messages:'TABLE_EMPTY', table)));
 
-    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
-
-    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
-        name = str('\'{"text":"Page %d/%d","color":"%s","italic":false}\'', page_count % pages_length + 1, pages_length, global_color);
-        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', items_length)];
-        nbt = if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}});
-        inventory_set(screen, 49, 1, 'paper', nbt);
-    );
-
-    _setMenuItems(screen, page) -> (
-        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt)));
-    );
-
-    global_current_page:player() = 0;
-
-    screen = create_screen(player(), 'generic_9x6', table, _(screen, player, action, data, outer(pages), outer(items)) -> (
-        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
-            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
-            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
-            _setMenuItems(screen, page);
-        );
-        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
-    ));
-
-    _setMenuItems(screen, pages:0);
-
-    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
-    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
-    if(length(pages) > 1,
-        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}}));
-        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}}));
-    );
+    _itemScreen(items, table);
 );
 
 // INSERTION
@@ -676,7 +701,7 @@ insert(mode, table, from_pos, to_pos) -> (
         if(inventory_has_items(block) != null,
             size = inventory_size(block);
             loop(size, inventory_set(block, _, 0));
-            for(_getRandomContents(mode, items, size), [item, count, nbt] = _; inventory_set(block, _i, count, item, if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt)));
+            for(_getRandomContents(mode, items, size), [item, count, nbt] = _; inventory_set(block, _i, count, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true)));
             _updateComparators(block);
             last_block = block;
         );

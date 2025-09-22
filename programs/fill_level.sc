@@ -154,14 +154,14 @@ setContainerFillLevel(block, fill_level) -> (
         loop(slots,
             amount = min(items, 64);
             items += -amount;
-            inventory_set(block, _, amount, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt));
+            inventory_set(block, _, amount, dummy_item, dummy_nbt && if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt));
         ),
         loop(slots,
             amount = min(64, items / 64);
             items += -if(amount < 1, amount, floor(amount)) * 64;
             if(amount < 1,
-                inventory_set(block, _, amount * 64, dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt)),
-                inventory_set(block, _, if(_ == slots - 1, ceil(amount), floor(amount)), unstackable_dummy_item, if(system_info('game_pack_version') >= 33, {'components' -> unstackable_dummy_nbt, 'id' -> unstackable_dummy_item}, unstackable_dummy_nbt))
+                inventory_set(block, _, amount * 64, dummy_item, dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> dummy_nbt, 'id' -> dummy_item}, dummy_nbt), true)),
+                inventory_set(block, _, if(_ == slots - 1, ceil(amount), floor(amount)), unstackable_dummy_item, unstackable_dummy_nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> unstackable_dummy_nbt, 'id' -> unstackable_dummy_item}, unstackable_dummy_nbt), true))
             );
         )
     );

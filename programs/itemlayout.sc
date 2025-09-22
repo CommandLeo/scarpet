@@ -90,6 +90,15 @@ _error(error) -> (
 
 // UTILITY FUNCTIONS
 
+_formatTextComponent(text_component) -> (
+    return(
+        if(
+            system_info('game_pack_version') >= 62, text_component,
+            encode_json(text_component)
+        );
+    );
+);
+
 _scanStrip(from_pos, to_pos) -> (
     [x1, y1, z1] = from_pos;
     [x2, y2, z2] = to_pos;
@@ -111,7 +120,7 @@ _getItemAtPos(pos, direction) -> (
     if(!air(pos1), return(_getItemFromBlock(block(pos1))));
 
     item_frame = entity_area('item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0 || entity_area('glow_item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0;
-    if(item_frame, return(query(item_frame, 'item'):0 || replace(query(item_frame, 'nbt', 'Item.id'), '.+:', '')));
+    if(item_frame, return((query(item_frame, 'item') || ['air']):0 || replace(query(item_frame, 'nbt', 'Item.id') || 'air', '.+:', '')));
 
     return(_getItemFromBlock(block(pos)));
 );
@@ -146,6 +155,42 @@ _getItemFromBlock(block) -> (
             block~'wall', replace(block, 'wall_', ''),
             'air'
         )
+    );
+);
+
+_itemScreen(items, name) -> (
+    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
+
+    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
+        name = _formatTextComponent({'text' -> str('Page %d/%d', page_count % pages_length + 1, pages_length), 'color' -> global_color, 'italic' -> false});
+        lore = [_formatTextComponent({'text' -> str('%s entries', items_length), 'color' -> 'gray', 'italic' -> false})];
+        inventory_set(screen, 49, 1, 'paper', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}}), true));
+    );
+
+    _setMenuItems(screen, page) -> (
+        loop(45, [item, nbt] = page:_; inventory_set(screen, _, if(_ < length(page), 1, 0), item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true)));
+    );
+
+    global_current_page:player() = 0;
+
+    screen = create_screen(player(), 'generic_9x6', name, _(screen, player, action, data, outer(pages), outer(items)) -> (
+        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
+            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
+            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
+            _setMenuItems(screen, page);
+        );
+        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
+    ));
+
+    _setMenuItems(screen, pages:0);
+
+    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> if(system_info('game_pack_version') >= 64, {'tooltip_display' -> {'hide_tooltip' -> true}}, {'hide_tooltip' -> {}}), 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> _formatTextComponent('')}})));
+    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
+    if(length(pages) > 1,
+        previous_page_name = _formatTextComponent({'text' -> 'Previous Page', 'color' -> global_color, 'italic' -> false});
+        next_page_name = _formatTextComponent({'text' -> 'Next Page', 'color' -> global_color, 'italic' -> false});
+        inventory_set(screen, 48, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
+        inventory_set(screen, 50, 1, 'arrow', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> previous_page_name}, 'id' -> 'arrow'}, {'display' -> {'Name' -> previous_page_name}}), true));
     );
 );
 
@@ -224,38 +269,7 @@ viewItemLayout(item_layout) -> (
     items = filter(entries, _ != 'air' && item_list()~_ != null);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
-    pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
-
-    _setMenuInfo(screen, page_count, pages_length, items_length) -> (
-        name = str('\'{"text":"Page %d/%d","color":"%s","italic":false}\'', page_count % pages_length + 1, pages_length, global_color);
-        lore = [str('\'{"text":"%s entries","color":"gray","italic":false}\'', items_length)];
-        nbt = if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> name, 'lore' -> lore}, 'id' -> 'paper'}, {'display' -> {'Name' -> name, 'Lore' -> lore}});
-        inventory_set(screen, 49, 1, 'paper', nbt);
-    );
-
-    _setMenuItems(screen, page) -> (
-        loop(45, inventory_set(screen, _, if(_ < length(page), 1, 0), page:_));
-    );
-
-    global_current_page:player() = 0;
-
-    screen = create_screen(player(), 'generic_9x6', item_layout, _(screen, player, action, data, outer(pages), outer(items)) -> (
-        if(length(pages) > 1 && action == 'pickup' && (data:'slot' == 48 || data:'slot' == 50),
-            page = if(data:'slot' == 48, pages:(global_current_page:player += -1), data:'slot' == 50, pages:(global_current_page:player += 1));
-            _setMenuInfo(screen, global_current_page:player, length(pages), length(items));
-            _setMenuItems(screen, page);
-        );
-        if(action == 'pickup_all' || action == 'quick_move' || (action != 'clone' && data:'slot' != null && 0 <= data:'slot' <= 44) || (45 <= data:'slot' <= 53), return('cancel'));
-    ));
-
-    _setMenuItems(screen, pages:0);
-
-    for(range(45, 54), inventory_set(screen, _, 1, 'gray_stained_glass_pane', if(system_info('game_pack_version') >= 33, {'components' -> {'hide_tooltip' -> {}}, 'id' -> 'gray_stained_glass_pane'}, {'display' -> {'Name' -> '\'{"text":""}\''}})));
-    _setMenuInfo(screen, global_current_page:player(), length(pages), length(items));
-    if(length(pages) > 1,
-        inventory_set(screen, 48, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Previous page","color":"%s","italic":false}\'', global_color)}}));
-        inventory_set(screen, 50, 1, 'arrow', if(system_info('game_pack_version') >= 33, {'components' -> {'custom_name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}, 'id' -> 'arrow'}, {'display' -> {'Name' -> str('\'{"text":"Next page","color":"%s","italic":false}\'', global_color)}}));
-    );
+    _itemScreen(map(items, [_, null]), item_layout);
 );
 
 pasteItemLayout(item_layout, direction, item_frame_direction, item_frames_only) -> (
