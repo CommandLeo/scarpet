@@ -52,7 +52,7 @@ global_item_frame_types = {
     'item_frame' -> 'Item Frame',
     'glow_item_frame' -> 'Glow Item Frame'
 };
-global_extra_container_mode_options = {
+global_extra_containers_mode_options = {
     'repeat' -> 'm',
     'no_fill' -> 'f',
     'dummy_item' -> 'q',
@@ -90,15 +90,25 @@ global_error_messages = {
     'CANT_USE_UNSTACKABLES' -> 'You can\'t use unstackables: %s',
     'FILE_DELETION_ERROR' -> 'There was an error while deleting the file',
     'FILE_WRITING_ERROR' -> 'There was an error while writing the file',
+    'INVALID_AIR_MODE' -> 'Invalid air mode',
     'INVALID_CONTAINER_MODE' -> 'Invalid container mode',
     'INVALID_CONTAINER_TYPE' -> 'Invalid container type',
+    'INVALID_DIRECTION' -> 'Invalid direction',
+    'INVALID_DOUBLE_CHEST_DIRECTION' -> 'Invalid double chest direction',
+    'INVALID_EXTRA_CONTAINERS_MODE' -> 'Invalid extra containers mode',
     'INVALID_INDEX' -> 'Invalid index',
+    'INVALID_INVALID_ITEMS_MODE' -> 'Invalid invalid items mode',
     'INVALID_ITEMS' -> 'Invalid items: %s',
+    'INVALID_ITEM_AMOUNT' -> 'Invalid item amount',
     'INVALID_ITEM_FILTER' -> 'Invalid item filter',
+    'INVALID_ITEM_FRAME_TYPE' -> 'Invalid item frame type',
     'INVALID_ITEM_LAYOUTS' -> 'Invalid item layouts: %s',
     'INVALID_ITEM_LISTS' -> 'Invalid item lists: %s',
+    'INVALID_OBTAINABILITY' -> 'Invalid obtainability',
     'INVALID_PAGE_NUMBER' -> 'Invalid page number',
+    'INVALID_PLACING_OFFSET' -> 'Invalid placing offset',
     'INVALID_SHULKER_BOX_COLOR' -> 'Invalid shulker box color',
+    'INVALID_STACKABILITY' -> 'Invalid stackability',
     'ITEM_LAYOUT_DOESNT_EXIST' -> 'The item layout %s doesn\'t exist',
     'ITEM_LAYOUT_EMPTY' -> 'The %s item layout is empty',
     'ITEM_LIST_ALREADY_EXISTS' -> 'An item list with that name already exists',
@@ -200,30 +210,49 @@ __config() -> {
         'settings' -> 'settings',
         'settings shulker_box_color' -> 'printShulkerBoxColorSetting',
         'settings shulker_box_color <shulker_box_color>' -> 'setShulkerBoxColorSetting',
+        'settings shulker_box_color reset' -> ['setShulkerBoxColorSetting', null],
         'settings item_frame_type' -> 'printItemFrameTypeSetting',
         'settings item_frame_type <item_frame_type>' -> 'setItemFrameTypeSetting',
+        'settings item_frame_type reset' -> ['setItemFrameTypeSetting', null],
         'settings filter_item_amount' -> 'printFilterItemAmountSetting',
         'settings filter_item_amount <item_amount>' -> 'setFilterItemAmountSetting',
+        'settings filter_item_amount reset' -> ['setFilterItemAmountSetting', null],
         'settings double_chest_direction' -> 'printDoubleChestDirectionSetting',
         'settings double_chest_direction <direction>' -> 'setDoubleChestDirectionSetting',
+        'settings double_chest_direction reset' -> ['setDoubleChestDirectionSetting', null],
         'settings extra_containers_mode' -> 'printExtraContainersModeSetting',
         'settings extra_containers_mode <extra_containers_mode>' -> 'setExtraContainersModeSetting',
+        'settings extra_containers_mode reset' -> ['setExtraContainersModeSetting', null],
         'settings invalid_items_mode' -> 'printInvalidItemsModeSetting',
         'settings invalid_items_mode <invalid_items_mode>' -> 'setInvalidItemsModeSetting',
+        'settings invalid_items_mode reset' -> ['setInvalidItemsModeSetting', null],
         'settings air_mode' -> 'printAirModeSetting',
         'settings air_mode <air_mode>' -> 'setAirModeSetting',
+        'settings air_mode reset' -> ['setAirModeSetting', null],
         'settings placing_offset' -> 'printPlacingOffsetSetting',
         'settings placing_offset <offset>' -> 'setPlacingOffsetSetting',
+        'settings placing_offset reset' -> ['setPlacingOffsetSetting', null],
         'settings skip_empty_spots' -> 'printSkipEmptySpotsSetting',
         'settings skip_empty_spots <bool>' -> 'setSkipEmptySpotsSetting',
+        'settings skip_empty_spots reset' -> ['setSkipEmptySpotsSetting', null],
         'settings replace_blocks' -> 'printReplaceBlocksSetting',
         'settings replace_blocks <bool>' -> 'setReplaceBlocksSetting',
+        'settings replace_blocks reset' -> ['setReplaceBlocksSetting', null],
         'settings minimal_filling' -> 'printMinimalFillingSetting',
         'settings minimal_filling <bool>' -> 'setMinimalFillingSetting',
+        'settings minimal_filling reset' -> ['setMinimalFillingSetting', null],
         'settings prefer_unstackables' -> 'printPreferUnstackables',
         'settings prefer_unstackables <bool>' -> 'setPreferUnstackables',
+        'settings prefer_unstackables reset' -> ['setPreferUnstackables', null],
         'settings encoder_chest_max_filling' -> 'printEncoderChestMaxFilling',
         'settings encoder_chest_max_filling <bool>' -> 'setEncoderChestMaxFilling',
+        'settings encoder_chest_max_filling reset' -> ['setEncoderChestMaxFilling', null],
+        'settings encoder_chest_fill_all_slots' -> 'printEncoderChestFillAllSlots',
+        'settings encoder_chest_fill_all_slots <bool>' -> 'setEncoderChestFillAllSlots',
+        'settings encoder_chest_fill_all_slots reset' -> ['setEncoderChestFillAllSlots', null],
+        'settings encoder_chest_item_amount' -> 'printEncoderChestItemAmount',
+        'settings encoder_chest_item_amount <item_amount>' -> 'setEncoderChestItemAmount',
+        'settings encoder_chest_item_amount reset' -> ['setEncoderChestItemAmount', null],
 
         'dummy_item stackable' -> 'printStackableDummyItem',
         'dummy_item stackable get' -> 'printStackableDummyItem',
@@ -430,12 +459,11 @@ __config() -> {
         },
         'module' -> {
             'type' -> 'term',
-            'options' -> map(global_modules, _:'name'),
-            'suggest' -> []
+            'suggest' -> map(global_modules, _:'name')
         },
         'container' -> {
             'type' -> 'term',
-            'options' -> global_containers,
+            'suggest' -> global_containers,
             'case_sensitive' -> false
         },
         'from_pos' -> {
@@ -448,62 +476,62 @@ __config() -> {
         },
         'obtainability' -> {
             'type' -> 'term',
-            'options' -> keys(global_obtainabilities)
+            'suggest' -> keys(global_obtainabilities)
         },
         'stackability' -> {
             'type' -> 'term',
-            'options' -> keys(global_stackabilities)
+            'suggest' -> keys(global_stackabilities)
         },
         'direction' -> {
             'type' -> 'term',
-            'options' -> keys(global_double_chest_direction_options),
+            'suggest' -> keys(global_double_chest_direction_options),
             'case_sensitive' -> false
         },
         'target_signal_strength' -> {
             'type' -> 'int',
             'min' -> 1,
             'max' -> 13,
-            'suggest' -> []
+            'suggest' -> [1, 2, 3, 4],
         },
         'item_amount' -> {
             'type' -> 'int',
             'min' -> 1,
             'max' -> 63,
-            'suggest' -> []
+            'suggest' -> [1, 2, 3]
         },
         'shulker_box_color' -> {
             'type' -> 'term',
-            'options' -> keys(global_shulker_box_colors),
+            'suggest' -> keys(global_shulker_box_colors),
             'case_sensitive' -> false
         },
         'item_frame_type' -> {
             'type' -> 'term',
-            'options' -> keys(global_item_frame_types),
+            'suggest' -> keys(global_item_frame_types),
             'case_sensitive' -> false
         },
         'offset' -> {
             'type' -> 'int',
             'min' -> 1,
-            'suggest' -> []
+            'suggest' -> [1, 2]
         },
         'extra_containers_mode' -> {
             'type' -> 'term',
-            'options' -> keys(global_extra_container_mode_options),
+            'suggest' -> keys(global_extra_containers_mode_options),
             'case_sensitive' -> false
         },
         'invalid_items_mode' -> {
             'type' -> 'term',
-            'options' -> keys(global_invalid_items_mode_options),
+            'suggest' -> keys(global_invalid_items_mode_options),
             'case_sensitive' -> false
         },
         'air_mode' -> {
             'type' -> 'term',
-            'options' -> keys(global_air_mode_options),
+            'suggest' -> keys(global_air_mode_options),
             'case_sensitive' -> false
         },
         'facing' -> {
             'type' -> 'term',
-            'options' -> global_directions,
+            'suggest' -> global_directions,
             'case_sensitive' -> false
         }
     },
@@ -709,7 +737,7 @@ _scanStripes(from_pos, to_pos) -> (
    ));
 );
 
-itemScreen(items, name) -> (
+_itemScreen(items, name) -> (
     pages = map(range(length(items) / 45), slice(items, _i * 45, min(length(items), (_i + 1) * 45)));
 
     _setMenuInfo(screen, page_count, pages_length, items_length) -> (
@@ -767,7 +795,9 @@ global_default_settings = {
         'replace_blocks' -> false,
         'minimal_filling' -> false,
         'prefer_unstackables' -> false,
-        'encoder_chest_max_filling' -> true
+        'encoder_chest_max_filling' -> true,
+        'encoder_chest_fill_all_slots' -> true,
+        'encoder_chest_item_amount' -> 2
 };
 global_settings = {};
 for(global_default_settings, global_settings:_ = config:_ || global_default_settings:_);
@@ -842,24 +872,27 @@ createItemListFromItemLayout(name, item_layout) -> (
     createItemList(name, items);
 );
 
-createItemListFromAllItems(name, category, stackability) -> (
+createItemListFromAllItems(name, obtainability, stackability) -> (
+    if(global_obtainabilities~obtainability == null, _error(global_error_messages:'INVALID_OBTAINABILITY'));
+    if(global_stackabilities~stackability == null, _error(global_error_messages:'INVALID_STACKABILITY'));
+
     items = map(item_list(), [_, null]);
     survival_unobtainable_items = system_variable_get('survival_unobtainable_items');
     junk_items = system_variable_get('junk_items');
     firework_rockets = map(range(3), ['firework_rocket', if(system_info('game_pack_version') >= 33, {'fireworks' -> {'flight_duration' -> _ + 1}}, {'Fireworks' -> {'Flight' -> _ + 1}})]);
-    if((category == 'main_storage' || category == 'survival_obtainables') && (!survival_unobtainable_items || !junk_items), _error(global_error_messages:'ALLITEMS_NOT_INSTALLED'));
-    if(category == 'main_storage', put(items, items~['firework_rocket', null], firework_rockets, 'extend'));
+    if((obtainability == 'main_storage' || obtainability == 'survival_obtainables') && (!survival_unobtainable_items || !junk_items), _error(global_error_messages:'ALLITEMS_NOT_INSTALLED'));
+    if(obtainability == 'main_storage', put(items, items~['firework_rocket', null], firework_rockets, 'extend'));
     items = filter(items,
         [item, nbt] = _;
-        category_check = if(
-            category == 'main_storage',
+        obtainability_check = if(
+            obtainability == 'main_storage',
                 survival_unobtainable_items~item == null && (junk_items~item == null || nbt != null) && item~'shulker_box' == null,
-            category == 'survival_obtainables',
+            obtainability == 'survival_obtainables',
                 survival_unobtainable_items~item == null,
             true
         );
         stackability_check = !stackability || global_stackabilities:stackability~stack_limit(item) != null;
-        item != 'air' && category_check && stackability_check;
+        item != 'air' && obtainability_check && stackability_check;
     );
 
     createItemList(name, items);
@@ -1135,7 +1168,7 @@ viewItemList(item_list) -> (
     items = filter(items, [item, nbt] = _; item != 'air' && item_list()~item != null);
     if(!items, _error(str(global_error_messages:'ITEM_LIST_EMPTY', item_list)));
 
-    itemScreen(items, item_list)
+    _itemScreen(items, item_list)
 );
 
 // SETTINGS
@@ -1148,7 +1181,7 @@ settings() -> (
         'g Item Frame Type', '^g The type of item frame to use (normal or glowing)', str('?/%s settings item_frame_type', system_info('app_name')), 'f  - ', str('db %s', upper(global_item_frame_types:(global_settings:'item_frame_type'))), ' \n',
         'g Filter Item Amount', '^g The amount of filter items in the first slot of low threshold item filters', str('?/%s settings filter_item_amount', system_info('app_name')), 'f  - ', str('%sb %s', global_color, global_settings:'filter_item_amount'), ' \n',
         'g Double Chest Direction', '^g The direction where to place the second half of double chests', str('?/%s settings double_chest_direction', system_info('app_name')), 'f  - ', str('wb %s', upper(global_settings:'double_chest_direction')), ' \n',
-        'g Extra Containers Mode', '^g How extra containers should be filled', str('?/%s settings extra_containers_mode', system_info('app_name')), 'f  - ', str('%sb %s', global_extra_container_mode_options:(global_settings:'extra_containers_mode'), upper(global_settings:'extra_containers_mode')), ' \n',
+        'g Extra Containers Mode', '^g How extra containers should be filled', str('?/%s settings extra_containers_mode', system_info('app_name')), 'f  - ', str('%sb %s', global_extra_containers_mode_options:(global_settings:'extra_containers_mode'), upper(global_settings:'extra_containers_mode')), ' \n',
         'g Invalid Items Mode', '^g How invalid items should be handled', str('?/%s settings invalid_items_mode', system_info('app_name')), 'f  - ', str('%sb %s', global_invalid_items_mode_options:(global_settings:'invalid_items_mode'), upper(global_settings:'invalid_items_mode')), ' \n',
         'g Air Mode', '^g How air items should be handled', str('?/%s settings air_mode', system_info('app_name')), 'f  - ', str('%sb %s', global_air_mode_options:(global_settings:'air_mode'), upper(global_settings:'air_mode')), ' \n',
         'g Placing Offset', '^g The offset between placed blocks', str('?/%s settings placing_offset', system_info('app_name')), 'f  - ', str('%sb %s', global_color, global_settings:'placing_offset'), ' \n',
@@ -1156,7 +1189,9 @@ settings() -> (
         'g Replace Blocks', '^g Whether to replace non-air blocks when placing blocks', str('?/%s settings replace_blocks', system_info('app_name')), 'f  - ', if(global_settings:'replace_blocks', 'lb TRUE', 'rb FALSE'), ' \n',
         'g Minimal Filling', '^g Whether to fill the first slot of standard item filters with only a single filter item regardless', str('?/%s settings minimal_filling', system_info('app_name')), 'f  - ', if(global_settings:'minimal_filling', 'lb TRUE', 'rb FALSE'), ' \n',
         'g Prefer Unstackables', '^g Whether to use unstackable dummy items instead of full stacks of stackable dummy items', str('?/%s settings prefer_unstackables', system_info('app_name')), 'f  - ', if(global_settings:'prefer_unstackables', 'lb TRUE', 'rb FALSE'), ' \n',
-        'g Encoder Chest Max Filling', '^g Whether to use normal items instead of dummy items to adjust the signal strength of encoder chests, if needed to fit more item types', str('?/%s settings encoder_chest_max_filling', system_info('app_name')), 'f  - ', if(global_settings:'encoder_chest_max_filling', 'lb TRUE', 'rb FALSE'), ' \n',
+        'g Encoder Chest Max Filling', '^g Whether to use normal items instead of dummy items to adjust the signal strength of an encoder chest, if needed to fit more item types', str('?/%s settings encoder_chest_max_filling', system_info('app_name')), 'f  - ', if(global_settings:'encoder_chest_max_filling', 'lb TRUE', 'rb FALSE'), ' \n',
+        'g Encoder Chest Fill All Slots', '^g Whether to fill all empty slots in an encoder chest with dummy items', str('?/%s settings encoder_chest_fill_all_slots', system_info('app_name')), 'f  - ', if(global_settings:'encoder_chest_fill_all_slots', 'lb TRUE', 'rb FALSE'), ' \n',
+        'g Encoder Chest Item Amount', '^g The amount of items in each slot of an encoder chest', str('?/%s settings encoder_chest_item_amount', system_info('app_name')), 'f  - ', str('%sb %s', global_color, global_settings:'encoder_chest_item_amount'), ' \n',
         'fs ' + ' ' * 80
     ];
     print(format(texts));
@@ -1171,8 +1206,10 @@ setShulkerBoxColorSetting(color) -> (
         color == null,
             global_settings:'shulker_box_color' = global_default_settings:'shulker_box_color';
             print(format('f » ', 'g The shulker box color has been reset to its default value')),
+
         // else
-            if(global_shulker_box_colors:color == null, _error(global_error_messages:'INVALID_SHULKER_BOX_COLOR'));
+            if(global_shulker_box_colors~color == null, _error(global_error_messages:'INVALID_SHULKER_BOX_COLOR'));
+
             global_settings:'shulker_box_color' = color;
             print(format('f » ', 'g The shulker box color has been set to ', str('%sb %s', global_shulker_box_colors:color, upper(color))));
     );
@@ -1187,7 +1224,10 @@ setItemFrameTypeSetting(item_frame_type) -> (
         item_frame_type == null,
             global_settings:'item_frame_type' = global_default_settings:'item_frame_type';
             print(format('f » ', 'g The item frame type has been reset to its default value')),
+
         // else
+            if(global_item_frame_types~item_frame_type == null, _error(global_error_messages:'INVALID_ITEM_FRAME_TYPE'));
+
             global_settings:'item_frame_type' = item_frame_type;
             print(format('f » ', 'g The item frame type has been set to ', str('db %s', upper(global_item_frame_types:item_frame_type))));
     );
@@ -1202,7 +1242,10 @@ setFilterItemAmountSetting(amount) -> (
         amount == null,
             global_settings:'filter_item_amount' = global_default_settings:'filter_item_amount';
             print(format('f » ', 'g The amount of filter items for low threshold filters has been reset to its default value')),
+
         // else
+            if(type(amount) != 'number' || amount < 1 || amount > 63, _error(global_error_messages:'INVALID_ITEM_AMOUNT'));
+
             global_settings:'filter_item_amount' = amount;
             print(format('f » ', 'g The amount of filter items for low threshold filters has been set to ', str('%s %d', global_color, amount)));
     );
@@ -1217,14 +1260,17 @@ setDoubleChestDirectionSetting(direction) -> (
         direction == null,
             global_settings:'double_chest_direction' = global_default_settings:'double_chest_direction';
             print(format('f » ', 'g The relative direction where to place the second half of double chests has been reset to its default value')),
+
         // else
+            if(global_double_chest_direction_options~direction == null, _error(global_error_messages:'INVALID_DOUBLE_CHEST_DIRECTION'));
+
             global_settings:'double_chest_direction' = direction;
             print(format('f » ', 'g The relative direction where to place the second half of double chests has been set to ', str('wb %s', upper(direction))));
     );
 );
 
 printExtraContainersModeSetting() -> (
-    print(format('f » ', 'g The mode to fill extra containers is ', str('%sb %s', global_extra_container_mode_options:(global_settings:'extra_containers_mode'), upper(global_settings:'extra_containers_mode'))));
+    print(format('f » ', 'g The mode to fill extra containers is ', str('%sb %s', global_extra_containers_mode_options:(global_settings:'extra_containers_mode'), upper(global_settings:'extra_containers_mode'))));
 );
 
 setExtraContainersModeSetting(extra_containers_mode) -> (
@@ -1232,9 +1278,12 @@ setExtraContainersModeSetting(extra_containers_mode) -> (
         extra_containers_mode == null,
             global_settings:'extra_containers_mode' = global_default_settings:'extra_containers_mode';
             print(format('f » ', 'g The mode to fill extra containers has been reset to its default value')),
+
         // else
+            if(global_extra_containers_mode_options~extra_container_mode == null, _error(global_error_messages:'INVALID_EXTRA_CONTAINERS_MODE'));
+
             global_settings:'extra_containers_mode' = extra_containers_mode;
-            print(format('f » ', 'g The mode to fill extra containers has been set to ', str('%sb %s', global_extra_container_mode_options:extra_containers_mode, upper(extra_containers_mode))));
+            print(format('f » ', 'g The mode to fill extra containers has been set to ', str('%sb %s', global_extra_containers_mode_options:extra_containers_mode, upper(extra_containers_mode))));
     );
 );
 
@@ -1247,7 +1296,10 @@ setInvalidItemsModeSetting(invalid_items_mode) -> (
         invalid_items_mode == null,
             global_settings:'invalid_items_mode' = global_default_settings:'invalid_items_mode';
             print(format('f » ', 'g The mode to handle invalid items has been reset to its default value')),
+
         // else
+            if(global_invalid_items_mode_options~invalid_items_mode == null, _error(global_error_messages:'INVALID_INVALID_ITEMS_MODE'));
+
             global_settings:'invalid_items_mode' = invalid_items_mode;
             print(format('f » ', 'g The mode to handle invalid items has been set to ', str('%sb %s', global_invalid_items_mode_options:invalid_items_mode, upper(invalid_items_mode))));
     );
@@ -1262,7 +1314,10 @@ setAirModeSetting(air_mode) -> (
         air_mode == null,
             global_settings:'air_mode' = global_default_settings:'air_mode';
             print(format('f » ', 'g The mode to handle air items has been reset to its default value')),
+
         // else
+            if(global_air_mode_options~air_mode == null, _error(global_error_messages:'INVALID_AIR_MODE'));
+
             global_settings:'air_mode' = air_mode;
             print(format('f » ', 'g The mode to handle air items has been set to ', str('%sb %s', global_air_mode_options:air_mode, upper(air_mode))));
     );
@@ -1277,7 +1332,10 @@ setPlacingOffsetSetting(offset) -> (
         offset == null,
             global_settings:'placing_offset' = global_default_settings:'placing_offset';
             print(format('f » ', 'g The placing offset has been reset to its default value')),
+
         // else
+            if(type(offset) != 'number' || offset < 1 || offset > 100, _error(global_error_messages:'INVALID_PLACING_OFFSET'));
+
             global_settings:'placing_offset' = offset;
             print(format('f » ', 'g The placing offset has been set to ', str('%s %d', global_color, offset)));
     );
@@ -1287,13 +1345,14 @@ printReplaceBlocksSetting() -> (
     print(format('f » ', 'g Replacing blocks is ', if(global_settings:'replace_blocks', 'l enabled', 'r disabled')));
 );
 
-setReplaceBlocksSetting(bool) -> (
+setReplaceBlocksSetting(value) -> (
     if(
-        bool == null,
+        value == null,
             global_settings:'replace_blocks' = global_default_settings:'replace_blocks';
             print(format('f » ', 'g Replacing blocks has been ', if(global_settings:'replace_blocks', 'l enabled', 'r disabled'))),
+
         // else
-            global_settings:'replace_blocks' = bool(bool);
+            global_settings:'replace_blocks' = bool(value);
             print(format('f » ', 'g Replacing blocks has been ', if(global_settings:'replace_blocks', 'l enabled', 'r disabled')));
     );
 );
@@ -1302,13 +1361,14 @@ printSkipEmptySpotsSetting() -> (
     print(format('f » ', 'g Skipping empty spots is ', if(global_settings:'skip_empty_spots', 'l enabled', 'r disabled')));
 );
 
-setSkipEmptySpotsSetting(bool) -> (
+setSkipEmptySpotsSetting(value) -> (
     if(
-        bool == null,
+        value == null,
             global_settings:'skip_empty_spots' = global_default_settings:'skip_empty_spots';
             print(format('f » ', 'g Skipping empty spots has been ', if(global_settings:'skip_empty_spots', 'l enabled', 'r disabled'))),
+
         // else
-            global_settings:'skip_empty_spots' = bool(bool);
+            global_settings:'skip_empty_spots' = bool(value);
             print(format('f » ', 'g Skipping empty spots has been ', if(global_settings:'skip_empty_spots', 'l enabled', 'r disabled')));
     )
 );
@@ -1317,14 +1377,15 @@ printMinimalFillingSetting() -> (
     print(format('f » ', 'g Minimal filling is ', if(global_settings:'minimal_filling', 'l enabled', 'r disabled')));
 );
 
-setMinimalFillingSetting(bool) -> (
+setMinimalFillingSetting(value) -> (
     if(
-        bool == null,
+        value == null,
             global_settings:'minimal_filling' = global_default_settings:'minimal_filling';
-            print(format('f » ', 'g Minimal filling has been ', if(bool, 'l enabled', 'r disabled'))),
+            print(format('f » ', 'g Minimal filling has been ', if(global_settings:'minimal_filling', 'l enabled', 'r disabled'))),
+
         // else
-            global_settings:'minimal_filling' = bool(bool);
-            print(format('f » ', 'g Minimal filling has been ', if(bool, 'l enabled', 'r disabled')));
+            global_settings:'minimal_filling' = bool(value);
+            print(format('f » ', 'g Minimal filling has been ', if(global_settings:'minimal_filling', 'l enabled', 'r disabled')));
     );
 );
 
@@ -1332,13 +1393,14 @@ printPreferUnstackables() -> (
     print(format('f » ', 'g Preferring unstackables is ', if(global_settings:'prefer_unstackables', 'l enabled', 'r disabled')));
 );
 
-setPreferUnstackables(bool) -> (
+setPreferUnstackables(value) -> (
     if(
-        bool == null,
+        value == null,
             global_settings:'prefer_unstackables' = global_default_settings:'prefer_unstackables';
             print(format('f » ', 'g Preferring unstackables has been ', if(global_settings:'prefer_unstackables', 'l enabled', 'r disabled'))),
+
         // else
-            global_settings:'prefer_unstackables' = bool(bool);
+            global_settings:'prefer_unstackables' = bool(value);
             print(format('f » ', 'g Preferring unstackables has been ', if(global_settings:'prefer_unstackables', 'l enabled', 'r disabled')));
     );
 );
@@ -1347,14 +1409,49 @@ printEncoderChestMaxFilling() -> (
     print(format('f » ', 'g Maximum filling of encoder chests is ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
 );
 
-setEncoderChestMaxFilling(bool) -> (
+setEncoderChestMaxFilling(value) -> (
     if(
-        bool == null,
+        value == null,
             global_settings:'encoder_chest_max_filling' = global_default_settings:'encoder_chest_max_filling';
             print(format('f » ', 'g Maximum filling of encoder chests has been ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled'))),
+
         // else
-            global_settings:'encoder_chest_max_filling' = bool(bool);
+            global_settings:'encoder_chest_max_filling' = bool(value);
             print(format('f » ', 'g Maximum filling of encoder chests has been ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
+    );
+);
+
+printEncoderChestFillAllSlots() -> (
+    print(format('f » ', 'g Filling all slots of encoder chests is ', if(global_settings:'encoder_chest_max_filling', 'l enabled', 'r disabled')));
+);
+
+setEncoderChestFillAllSlots(value) -> (
+    if(
+        value == null,
+            global_settings:'encoder_chest_fill_all_slots' = global_default_settings:'encoder_chest_fill_all_slots';
+            print(format('f » ', 'g Filling all slots of encoder chests has been ', if(global_settings:'encoder_chest_fill_all_slots', 'l enabled', 'r disabled'))),
+
+        // else
+            global_settings:'encoder_chest_fill_all_slots' = bool(value);
+            print(format('f » ', 'g Filling all slots of encoder chests has been ', if(global_settings:'encoder_chest_fill_all_slots', 'l enabled', 'r disabled')));
+    );
+);
+
+printEncoderChestItemAmount() -> (
+    print(format('f » ', 'g The amount of items in each slot of an encoder chest is ', str('%s %d', global_color, global_settings:'encoder_chest_item_amount')));
+);
+
+setEncoderChestItemAmount(amount) -> (
+    if(
+        amount == null,
+            global_settings:'encoder_chest_item_amount' = global_default_settings:'encoder_chest_item_amount';
+            print(format('f » ', 'g The amount of items in each slot of an encoder chest has been reset to its default value')),
+
+        // else
+            if(type(amount) != 'number' || amount < 1 || amount > 64, _error(global_error_messages:'INVALID_ITEM_AMOUNT'));
+
+            global_settings:'encoder_chest_item_amount' = amount;
+            print(format('f » ', 'g The amount of items in each slot of an encoder chest has been set to ', str('%s %d', global_color, amount)));
     );
 );
 
@@ -1665,7 +1762,7 @@ giveItemFilter(item_filter, items) -> (
             'custom_name' -> hopper_name,
             'lore' -> hopper_lore,
             'enchantment_glint_override' -> true,
-            if(system_info('game_pack_version') >= 64, 
+            if(system_info('game_pack_version') >= 64,
                 'tooltip_display' -> {'hidden_components' -> ['container']},
                 'hide_additional_tooltip' -> {}
             )
@@ -1962,7 +2059,7 @@ giveContainer(mode, container, items) -> (
             'custom_name' -> container_name,
             'lore' -> container_lore,
             'enchantment_glint_override' -> true,
-            if(system_info('game_pack_version') >= 64, 
+            if(system_info('game_pack_version') >= 64,
                 'tooltip_display' -> {'hidden_components' -> ['container']},
                 'hide_additional_tooltip' -> {}
             )
@@ -2290,7 +2387,7 @@ giveMISChest(item_list_string) -> (
             'custom_name' -> chest_name,
             'lore' -> chest_lore,
             'enchantment_glint_override' -> true,
-            if(system_info('game_pack_version') >= 64, 
+            if(system_info('game_pack_version') >= 64,
                 'tooltip_display' -> {'hidden_components' -> ['container']},
                 'hide_additional_tooltip' -> {}
             )
@@ -2367,13 +2464,20 @@ _encoderChest(chest, items, signal_strength) -> (
             continue();
         );
 
-        [item, nbt] = if(_ < length(items), items:(i+=1), global_stackable_dummy_item);
+        if(
+            _ < length(items),
+                [item, nbt] = items:(i+=1),
+            global_settings:'encoder_chest_fill_all_slots',
+                [item, nbt] = global_stackable_dummy_item,
+            //else
+                continue()
+        );
 
         if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || _isUnstackable(item), [item, nbt] = global_stackable_dummy_item);
 
-        inventory_set(chest, _, 2, item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
+        inventory_set(chest, _, global_settings:'encoder_chest_item_amount', item, nbt && encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> nbt, 'id' -> item}, nbt), true));
 
-        if(item != 'air', amount += -2 * (64 / stack_limit(item)));
+        if(item != 'air', amount += -global_settings:'encoder_chest_item_amount' * (64 / stack_limit(item)));
     );
     skipped_items = if(i+1 < length(items), slice(items, i+1), []);
 
@@ -2478,7 +2582,7 @@ giveEncoderChest(signal_strength, item_list_string) -> (
             'custom_name' -> chest_name,
             'lore' -> chest_lore,
             'enchantment_glint_override' -> true,
-            if(system_info('game_pack_version') >= 64, 
+            if(system_info('game_pack_version') >= 64,
                 'tooltip_display' -> {'hidden_components' -> ['container']},
                 'hide_additional_tooltip' -> {}
             )
@@ -2564,6 +2668,7 @@ placeItemFramesFromItemLayout(from_pos, to_pos, facing, item_layout) -> (
 
 placeItemFrames(items, from_pos, to_pos, item_frame_facing) -> (
     if(!items, _error(global_error_messages:'NO_ITEMS_PROVIDED'));
+    if(global_directions~item_frame_facing == null, _error(global_error_messages:'INVALID_DIRECTION'));
     if(length(filter(to_pos - from_pos, _ == 0)) < 2, _error(global_error_messages:'NOT_A_ROW_OF_BLOCKS'));
 
     from_pos = pos_offset(from_pos, item_frame_facing);
@@ -2657,7 +2762,7 @@ giveItemFrames(items) -> (
             'custom_name' -> item_frame_name,
             'lore' -> item_frame_lore,
             'enchantment_glint_override' -> true,
-            if(system_info('game_pack_version') >= 64, 
+            if(system_info('game_pack_version') >= 64,
                 'tooltip_display' -> {'hidden_components' -> ['container']},
                 'hide_additional_tooltip' -> {}
             )
@@ -2772,7 +2877,7 @@ giveMixedChests(items, mode) -> (
             {
                 'container' -> item_maps,
                 'custom_name' -> chest_name,
-                if(system_info('game_pack_version') >= 64, 
+                if(system_info('game_pack_version') >= 64,
                     'tooltip_display' -> {'hidden_components' -> ['container']},
                     'hide_additional_tooltip' -> {}
                 )
@@ -2864,7 +2969,7 @@ missingItems(item_list, current_items) -> (
 
     items = _readItemList(item_list);
     missing_items = filter(items, current_items~_ == null);
-    itemScreen(missing_items, 'Missing Items');
+    _itemScreen(missing_items, 'Missing Items');
 
     print(format('f » ', 'g Showing ', str('%s %d', global_color, length(missing_items)), str('g  missing item%s', if(length(missing_items) == 1, '', 's'))));
 );
