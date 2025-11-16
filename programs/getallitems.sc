@@ -28,7 +28,6 @@ global_survival_unobtainable_items = [
     'structure_void',
     'structure_block',
     'jigsaw',
-    'bundle',
     ...filter(global_items, _~'spawn_egg' != null),
     'player_head',
     'command_block_minecart',
@@ -42,6 +41,7 @@ global_survival_unobtainable_items = [
 ];
 if(system_info('game_data_version') < 2825, global_survival_unobtainable_items += 'spore_blossom'); // 1.18 Experimental 1
 if(system_info('game_data_version') < 3066, global_survival_unobtainable_items += 'sculk_sensor'); // Deep Dark Experimental Snapshot 1
+if(system_info('game_data_version') < 4069, global_survival_unobtainable_items += 'bundle') // 24w39a
 global_junk_items = ['filled_map', 'written_book', 'tipped_arrow', 'firework_star', 'firework_rocket'];
 system_variable_set('survival_unobtainable_items', global_survival_unobtainable_items);
 system_variable_set('junk_items', global_junk_items);
