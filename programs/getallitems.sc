@@ -41,7 +41,7 @@ global_survival_unobtainable_items = [
 ];
 if(system_info('game_data_version') < 2825, global_survival_unobtainable_items += 'spore_blossom'); // 1.18 Experimental 1
 if(system_info('game_data_version') < 3066, global_survival_unobtainable_items += 'sculk_sensor'); // Deep Dark Experimental Snapshot 1
-if(system_info('game_data_version') < 4069, global_survival_unobtainable_items += 'bundle') // 24w39a
+if(system_info('game_data_version') < 4069, global_survival_unobtainable_items += 'bundle'); // 24w39a
 global_junk_items = ['filled_map', 'written_book', 'tipped_arrow', 'firework_star', 'firework_rocket'];
 system_variable_set('survival_unobtainable_items', global_survival_unobtainable_items);
 system_variable_set('junk_items', global_junk_items);
@@ -137,4 +137,5 @@ showScreen(category, stackability) -> (
         shulker_box_contents = map(shulker_box_items, [item, nbt] = _; _itemToMap(_i, item, 1, nbt));
         inventory_set(screen, _, 1, 'white_shulker_box', encode_nbt(if(system_info('game_pack_version') >= 33, {'components' -> {'container' -> shulker_box_contents}, 'id' -> 'white_shulker_box'}, {'BlockEntityTag' -> {'Items' -> shulker_box_contents}}), true));
     );
+
 );
