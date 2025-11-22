@@ -90,6 +90,32 @@ _error(error) -> (
 
 // UTILITY FUNCTIONS
 
+_parseEntry(entry) -> (
+    if(!entry, return([null, null]));
+
+    i = split(entry)~'{';
+    [item, nbt] = if(
+        i == 0,
+            [null, null],
+        i != null,
+            [lower(slice(entry, 0, i)) || null, parse_nbt(slice(entry, i))],
+        // else
+            [lower(entry), null]
+    );
+    return([item, nbt]);
+);
+
+_itemToString(item_tuple) -> (
+    [item, nbt] = item_tuple;
+    return(item + if(nbt, encode_nbt(nbt, true), ''));
+);
+
+_readItemLayout(item_layout) -> (
+    item_layout_path = str('item_layouts/%s', item_layout);
+    entries = filter(map(read_file(item_layout_path, 'shared_text'), _parseEntry(_)), _:0);
+    return(entries);
+);
+
 _formatTextComponent(text_component) -> (
     return(
         if(
@@ -117,12 +143,27 @@ _scanStrip(from_pos, to_pos) -> (
 
 _getItemAtPos(pos, direction) -> (
     pos1 = pos_offset(pos, direction);
-    if(!air(pos1), return(_getItemFromBlock(block(pos1))));
+    if(!air(pos1), return([_getItemFromBlock(block(pos1)), null]));
 
-    item_frame = entity_area('item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0 || entity_area('glow_item_frame', pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0;
-    if(item_frame, return((query(item_frame, 'item') || ['air']):0 || replace(query(item_frame, 'nbt', 'Item.id') || 'air', '.+:', '')));
+    item_frame_types = filter(entity_types(), _~'item_frame');
+    for(item_frame_types,
+        item_frame = entity_area(_, pos1 + [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]):0;
+        if(item_frame,
+            item_tuple = query(item_frame, 'item');
+            if(item_tuple,
+                [item, count, nbt] = item_tuple;
+                return([item, nbt]);
+            );
+            item_data = query(item_frame, 'nbt', 'Item');
+            if (item_data,
+                item = split(':', item_data:'id'):(-1);
+                nbt = item_data:'tag' || item_data:'components';
+                return([item, nbt])
+            );
+        );
+    );
 
-    return(_getItemFromBlock(block(pos)));
+    return([_getItemFromBlock(block(pos)), null]);
 );
 
 _getItemFromBlock(block) -> (
@@ -228,7 +269,7 @@ saveItemLayout(from_pos, to_pos, direction, name) -> (
     if(length(filter(to_pos - from_pos, _ == 0)) != 2, _error(global_error_messages:'NOT_A_ROW_OF_BLOCKS'));
 
     items = map(_scanStrip(from_pos, to_pos), _getItemAtPos(_, direction));
-    success = write_file(item_layout_path, 'shared_text', items);
+    success = write_file(item_layout_path, 'shared_text', map(items, _itemToString(_)));
 
     if(!success, _error(global_error_messages:'FILE_WRITING_ERROR'));
     print(format('f » ', 'g Successfully saved the ', str('%s %s', global_color, name), str('^g /%s view %s', system_info('app_name'), name), str('!/%s view %s', system_info('app_name'), name), 'g  item layout'));
@@ -265,35 +306,37 @@ viewItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    entries = read_file(item_layout_path, 'shared_text');
-    items = filter(entries, _ != 'air' && item_list()~_ != null);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
-    _itemScreen(map(items, [_, null]), item_layout);
+    _itemScreen(items, item_layout);
 );
 
-pasteItemLayout(item_layout, direction, item_frame_direction, item_frames_only) -> (
+pasteItemLayout(item_layout, direction, item_frame_facing, item_frames_only) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = read_file(item_layout_path, 'shared_text');
+    items = _readItemLayout(item_layout);
     if(!items, _error(global_error_messages:'ITEM_LAYOUT_EMPTY'));
 
     origin_pos = player()~'pos';
     for(items,
+        [item, nbt] = _;
         pos = pos_offset(origin_pos, direction, _i);
         set(pos, 'air');
-        print(_);
-        if(item_list()~_ == null, continue());
+        if(item_list()~item == null, continue());
         if(!item_frames_only,
-            if(block_list()~_ != null, continue(set(pos, _)));
-            if(place_item(_, pos), continue());
+            if(block_list()~item != null, continue(set(pos, item)));
+            if(place_item(item, pos), continue());
         );
         if(global_default_block, set(pos, global_default_block));
-        spawn('item_frame', pos_offset(pos, item_frame_direction), {'Facing' -> global_directions~item_frame_direction, 'Fixed' -> true, 'Item' -> {'id' -> _, 'Count' -> 1}});
+        item_frame_pos = pos_offset(pos, item_frame_facing);
+        facing = global_directions~item_frame_facing;
+        spawn('item_frame', item_frame_pos, {'Facing' -> facing, 'Fixed' -> true, 'Item' -> if(system_info('game_pack_version') >= 33, {'id' -> item, 'components' -> nbt}, {'id' -> item, 'Count' -> 1, ...if(nbt, {'tag' -> nbt}, {})})});
     );
 
     print(format('f » ', 'g The ', str('%s %s', global_color, item_layout), 'g  item layout has been pasted'));
+    run('playsound block.note_block.pling master @s');
 );
 
 // DEFAULT BLOCK

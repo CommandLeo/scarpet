@@ -560,25 +560,35 @@ _removeDuplicates(list) -> filter(list, list~_ == _i);
 // UTILITY FUNCTIONS
 
 _parseEntry(entry) -> (
-    i = split(entry)~'{';
-    return(
-        if(i != null,
-            [slice(entry, 0, i) || null, parse_nbt(slice(entry, i))],
-        // else
-            [entry || null, null]
-        );
-    );
-);
+    if(!entry, return([null, null]));
 
-_readItemList(item_list) -> (
-    item_list_path = str('item_lists/%s', item_list);
-    entries = map(filter(read_file(item_list_path, 'shared_text'), _), _parseEntry(_));
-    return(entries);
+    i = split(entry)~'{';
+    [item, nbt] = if(
+        i == 0,
+            [null, null],
+        i != null,
+            [lower(slice(entry, 0, i)) || null, parse_nbt(slice(entry, i))],
+        // else
+            [lower(entry), null]
+    );
+    return([item, nbt]);
 );
 
 _itemToString(item_tuple) -> (
     [item, nbt] = item_tuple;
     return(item + if(nbt, encode_nbt(nbt, true), ''));
+);
+
+_readItemList(item_list) -> (
+    item_list_path = str('item_lists/%s', item_list);
+    entries = filter(map(read_file(item_list_path, 'shared_text'), _parseEntry(_)), _:0);
+    return(entries);
+);
+
+_readItemLayout(item_layout) -> (
+    item_layout_path = str('item_layouts/%s', item_layout);
+    entries = filter(map(read_file(item_layout_path, 'shared_text'), _parseEntry(_)), _:0);
+    return(entries);
 );
 
 _itemToMap(slot, item, count, nbt) -> (
@@ -593,8 +603,10 @@ _itemToMap(slot, item, count, nbt) -> (
 _formatTextComponent(text_component) -> (
     return(
         if(
-            system_info('game_pack_version') >= 62, text_component,
-            encode_json(text_component)
+            system_info('game_pack_version') >= 62,
+                text_component,
+            // else
+                encode_json(text_component)
         );
     );
 );
@@ -606,7 +618,14 @@ _giveCommand(item, nbt) -> (
 );
 
 _getShulkerBoxString(color) -> (
-    return(if(color == 'default', 'shulker_box', str('%s_shulker_box', color)));
+    return(
+        if(
+            color == 'default',
+                'shulker_box',
+            // else
+                str('%s_shulker_box', color)
+        )
+    );
 );
 
 _generateFullShulkerBox(item, nbt) -> (
@@ -671,7 +690,14 @@ _updateComparators(block) -> (
 
 _getFacing(player) -> (
     facing = query(player, 'facing');
-    return(if(facing == 'down' || facing == 'up', query(player, 'facing', 1), facing));
+    return(
+        if(
+            facing == 'down' || facing == 'up',
+                query(player, 'facing', 1),
+            // else
+                facing
+        )
+    );
 );
 
 _getItemFromBlock(block) -> (
@@ -866,7 +892,7 @@ createItemListFromItemLayout(name, item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     createItemList(name, items);
@@ -1021,7 +1047,7 @@ addEntriesToItemListFromItemLayout(item_list, item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     addEntriesToItemList(item_list, items);
@@ -1653,7 +1679,7 @@ fillItemFiltersFromItemLayout(item_filter, from_pos, to_pos, item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     fillItemFilters(item_filter, items, from_pos, to_pos);
@@ -1726,7 +1752,7 @@ giveItemFilterFromItemLayout(item_filter, item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     giveItemFilter(item_filter, items);
@@ -1929,7 +1955,7 @@ fillContainersFromItemLayout(from_pos, to_pos, item_layout, mode) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     fillContainers(mode, items, from_pos, to_pos);
@@ -2023,7 +2049,7 @@ giveContainerFromItemLayout(container, item_layout, mode) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     giveContainer(mode, container, items);
@@ -2660,7 +2686,7 @@ placeItemFramesFromItemLayout(from_pos, to_pos, facing, item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     placeItemFrames(items, from_pos, to_pos, facing);
@@ -2730,7 +2756,7 @@ giveItemFramesFromItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     giveItemFrames(items);
@@ -2834,7 +2860,7 @@ giveMixedChestsFromItemLayout(item_layout, mode) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     giveMixedChests(items, mode);
@@ -2916,7 +2942,7 @@ giveBundleFromItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = map(read_file(item_layout_path, 'shared_text'), [lower(_), null]);
+    items = _readItemLayout(item_layout);
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     giveBundle(items);
