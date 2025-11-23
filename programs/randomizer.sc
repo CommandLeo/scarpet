@@ -59,7 +59,6 @@ _checkVersion(version) -> (
 );
 
 __config() -> {
-    'strict' -> true,
     'commands' -> {
         '' -> 'menu',
         'help' -> 'help',
@@ -178,7 +177,8 @@ __config() -> {
     'requires' -> {
         'carpet' -> '>=1.4.44'
     },
-    'scope' -> 'global'
+    'scope' -> 'global',
+    'strict' -> true
 };
 
 // HELPER FUNCTIONS
@@ -194,24 +194,29 @@ _removeDuplicates(list) -> filter(list, list~_ == _i);
 // UTILITY FUNCTIONS
 
 _parseEntry(entry) -> (
+    if(!entry, return([null, null]));
+
     i = split(entry)~'{';
-    return(
-        if(i != null,
-            [slice(entry, 0, i) || null, parse_nbt(slice(entry, i))],
+    [item, nbt] = if(
+        i == 0,
+            [null, null],
+        i != null,
+            [lower(slice(entry, 0, i)) || null, parse_nbt(slice(entry, i))],
         // else
-            [entry || null, null]
-        );
+            [lower(entry), null]
     );
+    return([item, nbt]);
 );
 
 _readTable(table) -> (
     entries = map(read_file(table, 'text'), _parseEntry(_));
-    return(filter(entries, _ && _:0 != 'air' && item_list()~(_:0) != null));
+    entries = filter(entries, _:0 && _:0 != 'air' && item_list()~(_:0) != null);
+    return(enties);
 );
 
 _readItemList(item_list) -> (
     item_list_path = str('item_lists/%s', item_list);
-    entries = map(filter(read_file(item_list_path, 'shared_text'), _), _parseEntry(_));
+    entries = filter(map(read_file(item_list_path, 'shared_text'), _parseEntry(_)), _:0);
     return(entries);
 );
 
@@ -232,8 +237,10 @@ _itemToMap(slot, item, count, nbt) -> (
 _formatTextComponent(text_component) -> (
     return(
         if(
-            system_info('game_pack_version') >= 62, text_component,
-            encode_json(text_component)
+            system_info('game_pack_version') >= 62,
+                text_component,
+            // else
+                encode_json(text_component)
         );
     );
 );
@@ -348,7 +355,9 @@ _getRandomContents(mode, items, size) -> (
         mode == 'full',
             map(range(size), [item, stack_limit(item), nbt]),
         mode~'box', 
-            map(range(size), item_maps = map(_getRandomContents(mode~'box_(.+)', items, 27), [item, count, nbt] = _; _itemToMap(_i, item, count, nbt)); ['white_shulker_box', 1, encode_nbt(if(system_info('game_pack_version') >= 33, {'container' -> item_maps}, {'BlockEntityTag' -> {'Items' -> item_maps}}), true)])
+            map(range(size), item_maps = map(_getRandomContents(mode~'box_(.+)', items, 27), [item, count, nbt] = _; _itemToMap(_i, item, count, nbt)); ['white_shulker_box', 1, encode_nbt(if(system_info('game_pack_version') >= 33, {'container' -> item_maps}, {'BlockEntityTag' -> {'Items' -> item_maps}}), true)]),
+        // else
+            []
     ));
 );
 

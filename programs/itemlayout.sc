@@ -77,7 +77,8 @@ __config() -> {
     'requires' -> {
         'carpet' -> '>=1.4.44'
     },
-    'scope' -> 'global'
+    'scope' -> 'global',
+    'strict' -> true
 };
 
 // HELPER FUNCTIONS
@@ -112,15 +113,18 @@ _itemToString(item_tuple) -> (
 
 _readItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
-    entries = filter(map(read_file(item_layout_path, 'shared_text'), _parseEntry(_)), _:0);
+    entries = map(read_file(item_layout_path, 'shared_text'), _parseEntry(_));
+    entries = filter(entries, _:0);
     return(entries);
 );
 
 _formatTextComponent(text_component) -> (
     return(
         if(
-            system_info('game_pack_version') >= 62, text_component,
-            encode_json(text_component)
+            system_info('game_pack_version') >= 62,
+                text_component,
+            // else
+                encode_json(text_component)
         );
     );
 );
@@ -241,7 +245,7 @@ menu() -> (
     texts = [
        'fs ' + ' ' * 80, ' \n',
         str('%sb Item Layout', global_color), if(_checkVersion('1.4.57'), ...['@https://github.com/CommandLeo/scarpet/wiki/Item-Layout', '^g Click to visit the wiki']), 'g  by ', str('%sb CommandLeo', global_color), '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'),' \n\n',
-        'g A tool to save a layout of items from a row of blocks and item frames to a file.', '  \n',
+        'g A script that allows saving an item layouts in the form of a row of blocks and item frames to a file.', '  \n',
         'g Run ', str('%s /%s help', global_color, system_info('app_name')), str('!/%s help', system_info('app_name')), '^g Click to run the command', 'g  to see a list of all the commands.', '  \n',
         'fs ' + ' ' * 80
     ];

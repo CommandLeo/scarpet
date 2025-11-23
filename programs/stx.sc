@@ -170,7 +170,6 @@ _checkVersion(version) -> (
 );
 
 __config() -> {
-    'strict' -> true,
     'commands' -> {
         '' -> 'menu',
         'help' -> ['help', 1],
@@ -544,7 +543,8 @@ __config() -> {
     'requires' -> {
         'carpet' -> '>=1.4.44'
     },
-    'scope' -> 'global'
+    'scope' -> 'global',
+    'strict' -> true
 };
 
 // HELPER FUNCTIONS
@@ -581,13 +581,15 @@ _itemToString(item_tuple) -> (
 
 _readItemList(item_list) -> (
     item_list_path = str('item_lists/%s', item_list);
-    entries = filter(map(read_file(item_list_path, 'shared_text'), _parseEntry(_)), _:0);
+    entries = map(read_file(item_list_path, 'shared_text'), _parseEntry(_));
+    entries = filter(entries, _:0);
     return(entries);
 );
 
 _readItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
-    entries = filter(map(read_file(item_layout_path, 'shared_text'), _parseEntry(_)), _:0);
+    entries = map(read_file(item_layout_path, 'shared_text'), _parseEntry(_));
+    entries = filter(entries, _:0);
     return(entries);
 );
 
