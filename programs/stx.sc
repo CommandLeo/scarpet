@@ -311,9 +311,10 @@ __config() -> {
             {}
         ),
 
-        'empty' -> ['fillContainersEmpty', null, null],
-        'empty <from_pos>' -> ['fillContainersEmpty', null],
-        'empty <from_pos> <to_pos>' -> 'fillContainersEmpty',
+        'empty' -> ['fillContainersEmpty', null, null, null],
+        'empty <from_pos>' -> ['fillContainersEmpty', null, null],
+        'empty <from_pos> <to_pos>' -> ['fillContainersEmpty', null],
+        'empty <from_pos> <to_pos> <block>' -> 'fillContainersEmpty',
 
         'redye_boxes <shulker_box_color>' -> ['redyeBoxes', null, null],
         'redye_boxes <shulker_box_color> <from_pos>' -> ['redyeBoxes', null],
@@ -360,6 +361,9 @@ __config() -> {
     'arguments' -> {
         'item' -> {
             'type' -> 'item'
+        },
+        'block' -> {
+            'type' -> 'blockpredicate'
         },
         'page' -> {
             'type' -> 'int',
@@ -699,6 +703,18 @@ _getFacing(player) -> (
             // else
                 facing
         )
+    );
+);
+
+_checkPredicate(block, block_predicate) -> (
+    [predicate_block, predicate_block_tag, predicate_block_states, predicate_block_data] = block_predicate;
+    block_states = block_state(block);
+    block_data = block_data(block);
+    return(
+        (!predicate_block || block == predicate_block) &&
+        (!predicate_block_tag || block_tags(block, predicate_block_tag)) &&
+        all(predicate_block_states, block_states:_ == predicate_block_states:_) &&
+        (!predicate_block_data || all(parse_nbt(predicate_block_data), block_data:_ == predicate_block_data:_))
     );
 );
 
@@ -2250,7 +2266,7 @@ _empty(block) -> (
     loop(inventory_size(block), inventory_set(block, _, 0));
 );
 
-fillContainersEmpty(from_pos, to_pos) -> (
+fillContainersEmpty(from_pos, to_pos, block_predicate) -> (
     trace = query(player(), 'trace', 5, 'blocks');
     if(!from_pos,
         if(!trace, _error(global_error_messages:'NOT_LOOKING_AT_ANY_BLOCK'));
@@ -2264,7 +2280,7 @@ fillContainersEmpty(from_pos, to_pos) -> (
     affected_blocks = volume(from_pos, to_pos,
         block = _;
 
-        if(inventory_has_items(block) != null,
+        if(inventory_has_items(block) != null && (!block_predicate || _checkPredicate(block, block_predicate)),
             _empty(block);
             _updateComparators(block);
             true;
@@ -3034,13 +3050,16 @@ __on_player_places_block(player, item_tuple, hand, block) -> (
 
 __on_player_right_clicks_block(player, item_tuple, hand, block, face, hitvec) -> (
     if(!item_tuple, return());
+
     [item, count, nbt] = item_tuple;
     data = if(system_info('game_pack_version') >= 33, nbt:'components':'minecraft:custom_data', nbt);
     if((item != 'item_frame' && item != 'glow_item_frame') || !has(data, 'stx.item_frame'), return());
+
     item_frame_type = item;
     origin_pos = pos_offset(block, face);
     player_facing = _getFacing(player);
     __on_item_frame_placed(item_frame_type, origin_pos, face, player_facing, data:'stx':'item_frame');
+
     return('cancel');
 );
 
