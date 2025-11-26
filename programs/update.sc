@@ -12,29 +12,63 @@ __config() -> {
         },
         'end' -> {
             'type' -> 'pos'
+        },
+        'block' -> {
+            'type' -> 'blockpredicate'
         }
     },
     'scope' -> 'player'
 };
 
-updateBlocks(start, end, block) -> (
-    trace = player()~'trace';
-    if(!start || !end,
-        if(
-            trace && type(trace) == 'block',
-                update(trace);
-                print(format('f » ', 'g Updated ', str('gi %s', trace), str('g  at [%d, %d, %d]', ...pos(trace)))),
-            // else
-                print(format('r You are not looking at any block'))
-        );
-        exit();
+// HELPER FUNCTIONS
+
+_error(error) -> (
+    print(format(str('r %s', error)));
+    run('playsound block.note_block.didgeridoo master @s');
+    exit();
+);
+
+// UTILITY FUNCTIONS
+
+_checkPredicate(block, block_predicate) -> (
+    [predicate_block, predicate_block_tag, predicate_block_states, predicate_block_data] = block_predicate;
+    block_states = block_state(block);
+    block_data = block_data(block);
+    return(
+        (!predicate_block || block == predicate_block) &&
+        (!predicate_block_tag || block_tags(block, predicate_block_tag)) &&
+        all(predicate_block_states, block_states:_ == predicate_block_states:_) &&
+        (!predicate_block_data || all(parse_nbt(predicate_block_data), block_data:_ == predicate_block_data:_))
     );
-    updated_count = 0;
-    volume(start, end,
-        if(!air(_) && (!block || _ == block),
-            update(_);
+);
+
+// MAIN
+
+updateBlocks(from_pos, to_pos, block_predicate) -> (
+    trace = query(player(), 'trace', 5, 'blocks');
+    if(!from_pos,
+        if(!trace, _error('You are not looking at any block'));
+        from_pos = trace;
+    );
+    if(!to_pos, to_pos = from_pos);
+
+    last_block = null;
+    affected_blocks = volume(from_pos, to_pos,
+        block = _;
+
+        if(!air(block) && (!block_predicate || _checkPredicate(block, block_predicate)),
+            update(block);
             updated_count += 1;
+            last_block = block;
         );
     );
-    print(format('f » ', 'g Updated ', str('d %d', updated_count),  str('g  block%s', if(updated_count != 1, 's', ''))));
-)
+
+    if(
+        affected_blocks == 0,
+            _error('No block was found'),
+        affected_blocks == 1,
+            print(format('f » ', 'g Updated ', str('gi %s', last_block), 'g  at ' + pos(last_block))),
+        // else
+            print(format('f » ', 'g Updated ', str('d %s', affected_blocks), str('g  block%s', if(affected_blocks == 1, '', 's'))));
+    );
+);
