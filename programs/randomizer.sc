@@ -211,7 +211,7 @@ _parseEntry(entry) -> (
 _readTable(table) -> (
     entries = map(read_file(table, 'text'), _parseEntry(_));
     entries = filter(entries, _:0 && _:0 != 'air' && item_list()~(_:0) != null);
-    return(enties);
+    return(entries);
 );
 
 _readItemList(item_list) -> (
@@ -736,4 +736,5 @@ giveContainer(container, mode, table) -> (
 
     item_maps = map(_getRandomContents(mode, items, 27), _itemToMap(_i, ..._));
     run(_giveCommand(container, if(system_info('game_pack_version') >= 33, {'container' -> item_maps}, {'BlockEntityTag' -> {'Items' -> item_maps}})));
+
 );
