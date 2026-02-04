@@ -50,6 +50,9 @@ __config() -> {
             'type' -> 'pos',
             'loaded' -> true
         },
+        'block' -> {
+            'type' -> 'block'
+        },
         'direction' -> {
             'type' -> 'term',
             'options' -> global_directions,
@@ -156,7 +159,7 @@ _getItemAtPos(pos, direction) -> (
             item_tuple = query(item_frame, 'item');
             if(item_tuple,
                 [item, count, nbt] = item_tuple;
-                return([item, nbt]);
+                return([item, nbt:'components']);
             );
             item_data = query(item_frame, 'nbt', 'Item');
             if (item_data,
@@ -245,7 +248,7 @@ menu() -> (
     texts = [
        'fs ' + ' ' * 80, ' \n',
         str('%sb Item Layout', global_color), if(_checkVersion('1.4.57'), ...['@https://github.com/CommandLeo/scarpet/wiki/Item-Layout', '^g Click to visit the wiki']), 'g  by ', str('%sb CommandLeo', global_color), '^g https://github.com/CommandLeo', if(_checkVersion('1.4.57'), '@https://github.com/CommandLeo'),' \n\n',
-        'g A script that allows saving an item layouts in the form of a row of blocks and item frames to a file.', '  \n',
+        'g A script that allows saving an item layout in the form of a row of blocks and item frames to a file.', '  \n',
         'g Run ', str('%s /%s help', global_color, system_info('app_name')), str('!/%s help', system_info('app_name')), '^g Click to run the command', 'g  to see a list of all the commands.', '  \n',
         'fs ' + ' ' * 80
     ];
@@ -310,7 +313,7 @@ viewItemLayout(item_layout) -> (
     item_layout_path = str('item_layouts/%s', item_layout);
     if(list_files('item_layouts', 'shared_text')~item_layout_path == null, _error(str(global_error_messages:'ITEM_LAYOUT_DOESNT_EXIST', item_layout)));
 
-    items = _readItemLayout(item_layout);
+    items = filter(_readItemLayout(item_layout), _:0 != 'air');
     if(!items, _error(str(global_error_messages:'ITEM_LAYOUT_EMPTY', item_layout)));
 
     _itemScreen(items, item_layout);
