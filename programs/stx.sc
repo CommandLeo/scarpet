@@ -675,18 +675,46 @@ _handleUnstackableItems(item_tuples) -> (
     );
 );
 
-_getReadingComparators(pos) -> (
+_getConnectedChest(block) -> (
+    if(block != 'chest', return());
+
+    chest_type = block_state(block, 'type');
+    if(chest_type == 'single', return());
+    chest_facing = block_state(block, 'facing');
+
+    other_chest_offset = global_cardinal_directions:(global_cardinal_directions~chest_facing + if(chest_type == 'left', 1, -1));
+
+    other_block = block(pos_offset(block, other_chest_offset));
+    if(other_block != 'chest', return());
+    other_chest_type = block_state(other_block, 'type');
+    if(other_chest_type == chest_type, return());
+    other_chest_facing = block_state(other_block, 'facing');
+    if(other_chest_facing != chest_facing, return());
+
+    return(other_block);
+);
+
+_getReadingComparators(block) -> (
+    blocks = [block];
+    connected_chest = _getConnectedChest(block);
+    if(connected_chest != null, blocks += connected_chest);
+
     comparators = [];
-    map(['north', 'east', 'south', 'west'],
-        block1 = block(pos_offset(pos, _, -1));
-        if(
-            block1 == 'comparator' && block_state(block1, 'facing') == _,
-                comparators += block1,
-            solid(block1) && inventory_has_items(block1) == null,
-                block2 = block(pos_offset(block1, _, -1));
-                if(block2 == 'comparator' && block_state(block2, 'facing') == _, comparators += block2);
+    for(blocks,
+        b = _;
+        for(['north', 'east', 'south', 'west'],
+            direction = _;
+            block1 = block(pos_offset(b, direction, -1));
+            if(
+                block1 == 'comparator' && block_state(block1, 'facing') == direction,
+                    comparators += block1,
+                solid(block1) && inventory_has_items(block1) == null,
+                    block2 = block(pos_offset(block1, direction, -1));
+                    if(block2 == 'comparator' && block_state(block2, 'facing') == direction, comparators += block2);
+            );
         );
     );
+
     return(comparators);
 );
 
@@ -844,7 +872,7 @@ global_default_settings = {
         'encoder_chest_item_amount' -> 2
 };
 global_settings = {};
-for(global_default_settings, global_settings:_ = config:_ || global_default_settings:_);
+for(global_default_settings, global_settings:_ = if(config:_ != null, config:_, global_default_settings:_));
 
 // MAIN
 
@@ -2514,7 +2542,8 @@ _encoderChest(chest, items, signal_strength) -> (
             global_settings:'encoder_chest_fill_all_slots',
                 [item, nbt] = global_stackable_dummy_item,
             //else
-                continue()
+                inventory_set(chest, _, 0);
+                continue();
         );
 
         if((item == 'air' && global_settings:'air_mode' == 'dummy_item') || _isInvalidItem(item) || _isUnstackable(item), [item, nbt] = global_stackable_dummy_item);
