@@ -146,6 +146,7 @@ global_help_pages = [
     ],
     [
         '%color% /%app_name% empty', 'f ｜', 'g Empties one or more containers', ' \n',
+        '%color% /%app_name% remove_item', 'f ｜', 'g Removes a specific item from one or more containers', ' \n',
         '%color% /%app_name% quick_fill', 'f ｜', 'g Fills a container with a single item type', ' \n',
         '%color% /%app_name% item_filter', 'f ｜', 'g Fills multiple item filters with different items', ' \n',
         '%color% /%app_name% container', 'f ｜', 'g Fills multiple containers with different items', ' \n',
@@ -315,6 +316,12 @@ __config() -> {
         'empty <from_pos>' -> ['fillContainersEmpty', null, null],
         'empty <from_pos> <to_pos>' -> ['fillContainersEmpty', null],
         'empty <from_pos> <to_pos> <block>' -> 'fillContainersEmpty',
+
+        'remove_item <item>' -> ['removeItemFromContainer', null, null, null],
+        'remove_item <item> <from_pos>' -> ['removeItemFromContainer', null, null],
+        'remove_item <item> <from_pos> <to_pos>' -> ['removeItemFromContainer', null],
+        'remove_item <item> <from_pos> <to_pos> <block>' -> 'removeItemFromContainer',
+
 
         'redye_boxes <shulker_box_color>' -> ['redyeBoxes', null, null],
         'redye_boxes <shulker_box_color> <from_pos>' -> ['redyeBoxes', null],
@@ -734,7 +741,7 @@ _getFacing(player) -> (
     );
 );
 
-_checkPredicate(block, block_predicate) -> (
+_checkBlockPredicate(block, block_predicate) -> (
     [predicate_block, predicate_block_tag, predicate_block_states, predicate_block_data] = block_predicate;
     block_states = block_state(block);
     block_data = block_data(block);
@@ -2291,7 +2298,13 @@ quickFillEmptyBoxes(from_pos, to_pos, count) -> (
 // EMPTY CONTAINERS
 
 _empty(block) -> (
-    loop(inventory_size(block), inventory_set(block, _, 0));
+    emptied_slots = 0;
+    loop(inventory_size(block),
+        i = inventory_set(block, _, 0);
+        if(i != null, emptied_slots += 1);
+    );
+
+    return(emptied_slots);
 );
 
 fillContainersEmpty(from_pos, to_pos, block_predicate) -> (
@@ -2308,14 +2321,54 @@ fillContainersEmpty(from_pos, to_pos, block_predicate) -> (
     affected_blocks = volume(from_pos, to_pos,
         block = _;
 
-        if(inventory_has_items(block) != null && (!block_predicate || _checkPredicate(block, block_predicate)),
-            _empty(block);
+        if(inventory_has_items(block) != null && (!block_predicate || _checkBlockPredicate(block, block_predicate)),
+            n = _empty(block);
             _updateComparators(block);
-            true;
+            n != 0;
         );
     );
 
     print(format('f » ', 'g Emptied ', str('%s %s', global_color, affected_blocks), str('g  container%s', if(affected_blocks == 1, '', 's'))));
+    run('playsound block.note_block.pling master @s');
+);
+
+// REMOVE ITEM FROM CONTAINER
+
+_removeItem(block, item) -> (
+    emptied_slots = 0;
+    loop(inventory_size(block),
+        i = inventory_get(block, _);
+        if(i:0 == item:0,
+            inventory_set(block, _, 0);
+            emptied_slots += 1;
+        );
+    );
+
+    return(emptied_slots);
+);
+
+removeItemFromContainer(item, from_pos, to_pos, block_predicate) -> (
+    trace = query(player(), 'trace', 5, 'blocks');
+    if(!from_pos,
+        if(!trace, _error(global_error_messages:'NOT_LOOKING_AT_ANY_BLOCK'));
+        from_pos = trace;
+    );
+    if(!to_pos,
+        if(inventory_has_items(from_pos) == null, _error(global_error_messages:'NOT_A_CONTAINER'));
+        to_pos = from_pos;
+    );
+
+    affected_blocks = volume(from_pos, to_pos,
+        block = _;
+
+        if(inventory_has_items(block) != null && (!block_predicate || _checkBlockPredicate(block, block_predicate)),
+            n = _removeItem(block, item);
+            _updateComparators(block);
+            n != 0;
+        );
+    );
+
+    print(format('f » ', 'g Removed item from ', str('%s %s', global_color, affected_blocks), str('g  container%s', if(affected_blocks == 1, '', 's'))));
     run('playsound block.note_block.pling master @s');
 );
 
