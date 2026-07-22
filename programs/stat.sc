@@ -4,20 +4,15 @@ global_total_text = ' §lTotal';
 global_block_list = block_list();
 global_item_list = item_list();
 global_entity_list = entity_types('*');
-global_server_whitelisted = system_info('server_whitelisted') || length(system_info('server_whitelist')) > 0;
-global_app_name = system_info('app_name');
 global_hex_charset = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+global_server_whitelisted = system_info('server_whitelisted') || length(system_info('server_whitelist')) > 0;
+global_color = '#FFEE44';
 
 pickaxes = filter(global_item_list, _~'_pickaxe');
 axes = filter(global_item_list, _~'_axe');
 shovels = filter(global_item_list, _~'_shovel');
 hoes = filter(global_item_list, _~'_hoe');
 
-display_names = read_file('display_names', 'json');
-global_misc_stats = display_names:'misc';
-global_block_names = display_names:'blocks';
-global_item_names = display_names:'items';
-global_entity_names = display_names:'entities';
 global_categories = {'mined' -> '%s Mined', 'crafted' -> '%s Crafted', 'used' -> '%s Used', 'broken' -> '%s Broken', 'picked_up' -> '%s Picked Up', 'dropped' -> '%s Dropped', 'killed' -> '%s Killed', 'killed_by' -> 'Killed by %s', 'custom' -> '%s', 'extra' -> '%s', 'digs' -> 'Digs [%s]'};
 global_extra_stats = {'bedrock_removed' -> 'Bedrock Removed', 'ping' -> 'Ping', 'health' -> 'Health', 'xp_level' -> 'Levels of Experience', 'hunger' -> 'Hunger', 'saturation' -> 'Saturation', 'air' -> 'Remaining Air'};
 global_dig_data = {'combined_blocks' -> ['Combined Blocks', null], 'total' -> ['Total', [...pickaxes, ...shovels, ...axes, ...hoes, 'shears']], 'pick' -> ['Pickaxe', pickaxes], 'shovel' -> ['Shovel', shovels], 'pickshovel' -> ['Pickaxe & Shovel', [...pickaxes, ...shovels]], 'axe' -> ['Axe', axes], 'hoe' -> ['Hoe', hoes]};
@@ -39,51 +34,51 @@ global_default_dig = settings:'default_dig' || 'combined_blocks';
 
 global_help_pages = [
     [
-        '%color% /%app_name% mined <block> ', 'f ｜ ', 'g Amount of <block> mined', ' \n',
-        '%color% /%app_name% used <item> ', 'f ｜ ', 'g Amount of <item> used or placed', ' \n',
-        '%color% /%app_name% crafted <item> ', 'f ｜ ', 'g Amount of <item> crafted', ' \n',
-        '%color% /%app_name% dropped <item> ', 'f ｜ ', 'g Amount of <item> dropped', ' \n',
-        '%color% /%app_name% picked_up <item> ', 'f ｜ ', 'g Amount of <item> picked up', ' \n',
-        '%color% /%app_name% broken <item> ', 'f ｜ ', 'g Amount of <item> broken', '^g (that ran out of durability)', ' \n',
-        '%color% /%app_name% killed <entity> ', 'f ｜ ', 'g Amount of <entity> killed', ' \n',
-        '%color% /%app_name% killed_by <entity> ', 'f ｜ ', 'g Amount of times <entity> killed you', ' \n',
-        '%color% /%app_name% misc <misc_stat> ', 'f ｜ ', 'g Misc statistics, e.g. play_time, deaths, mob_kills, aviate_one_cm', ' \n',
-        '%color% /%app_name% extra <extra_stat> ', 'f ｜ ', 'g Extra statistics that are not normally in the game, e.g. xp_level, ping, health, hunger', ' \n',
-        '%color% /%app_name% bedrock_removed ', 'f ｜ ', 'g Amount of bedrock removed by hand using pistons and tnt', ' \n',
-        '%color% /%app_name% digs <dig> ', 'f ｜ ', 'g Amount of digs (%default_dig% by default)', ' \n',
-        '%color% /%app_name% combined <combined_stat> ', 'f ｜ ', 'g Multiple statistics combined together', ' \n'
+        '%color% /%app_name% mined <block>', 'f ｜', 'g Amount of <block> mined', ' \n',
+        '%color% /%app_name% used <item>', 'f ｜', 'g Amount of <item> used or placed', ' \n',
+        '%color% /%app_name% crafted <item>', 'f ｜', 'g Amount of <item> crafted', ' \n',
+        '%color% /%app_name% dropped <item>', 'f ｜', 'g Amount of <item> dropped', ' \n',
+        '%color% /%app_name% picked_up <item>', 'f ｜', 'g Amount of <item> picked up', ' \n',
+        '%color% /%app_name% broken <item>', 'f ｜', 'g Amount of <item> broken', '^g (that ran out of durability)', ' \n',
+        '%color% /%app_name% killed <entity>', 'f ｜', 'g Amount of <entity> killed', ' \n',
+        '%color% /%app_name% killed_by <entity>', 'f ｜', 'g Amount of times <entity> killed you', ' \n',
+        '%color% /%app_name% misc <misc_stat>', 'f ｜', 'g Misc statistics, e.g. play_time, deaths, mob_kills, aviate_one_cm', ' \n',
+        '%color% /%app_name% extra <extra_stat>', 'f ｜', 'g Extra statistics that are not normally in the game, e.g. xp_level, ping, health, hunger', ' \n',
+        '%color% /%app_name% bedrock_removed', 'f ｜', 'g Amount of bedrock removed by hand using pistons and tnt', ' \n',
+        '%color% /%app_name% digs <dig>', 'f ｜', 'g Amount of digs (%default_dig% by default)', ' \n',
+        '%color% /%app_name% combined <combined_stat>', 'f ｜', 'g Multiple statistics combined together', ' \n'
     ],
     [
-        '%color% /%app_name% print <category> <entry> [<player>] ', 'f ｜ ', 'g Prints the value of a stat of a player', ' \n',
-        '%color% /%app_name% hide ', 'f ｜ ', 'g Hides the scoreboard', ' \n',
-        '%color% /%app_name% show ', 'f ｜ ', 'g Shows the scoreboard', '  \n',
-        '%color% /%app_name% settings bots_included [on|off|toggle] ', 'f ｜ ', 'g Includes or excludes bots in the scoreboard', ' \n',
-        '%color% /%app_name% bots [on|off|toggle] ', 'f ｜ ', 'g Shortcut for the command above', '  \n',
-        '%color% /%app_name% settings default_dig <dig> ', 'f ｜ ', 'g Sets the default dig type ', 'f *', '^g For server operators only', '  \n',
-        '%color% /%app_name% settings offline_digs [on|off|toggle] ', 'f ｜ ', 'g Includes or excludes digs of offline whitelisted players in the scoreboard', ' \n',
-        '%color% /%app_name% settings total [on|off|toggle] ', 'f ｜ ', 'g Enables or disables the total in the scoreboard', ' \n',
-        '%color% /%app_name% settings dig_display [on|off|toggle] ', 'f ｜ ', 'g Shows or hides digs in the player list footer', ' \n',
-        '%color% /%app_name% settings dig_display_color <hex_color> ', 'f ｜ ', 'g Changes the color of digs display for yourself; leave empty to reset', ' \n',
-        '%color% /%app_name% settings stat_color <hex_color> ', 'f ｜ ', 'g Changes the color of the scoreboard name for everyone; leave empty to reset ', 'f *', '^g For server operators only', ' \n'
+        '%color% /%app_name% print <category> <entry> [<player>]', 'f ｜', 'g Prints the value of a stat of a player', ' \n',
+        '%color% /%app_name% hide', 'f ｜', 'g Hides the scoreboard', ' \n',
+        '%color% /%app_name% show', 'f ｜', 'g Shows the scoreboard', '  \n',
+        '%color% /%app_name% settings bots_included [on|off|toggle]', 'f ｜', 'g Includes or excludes bots in the scoreboard', ' \n',
+        '%color% /%app_name% bots [on|off|toggle]', 'f ｜', 'g Shortcut for the command above', '  \n',
+        '%color% /%app_name% settings default_dig <dig>', 'f ｜', 'g Sets the default dig type ', 'f *', '^g For server operators only', '  \n',
+        '%color% /%app_name% settings offline_digs [on|off|toggle]', 'f ｜', 'g Includes or excludes digs of offline whitelisted players in the scoreboard', ' \n',
+        '%color% /%app_name% settings total [on|off|toggle]', 'f ｜', 'g Enables or disables the total in the scoreboard', ' \n',
+        '%color% /%app_name% settings dig_display [on|off|toggle]', 'f ｜', 'g Shows or hides digs in the player list footer', ' \n',
+        '%color% /%app_name% settings dig_display_color <hex_color>', 'f ｜', 'g Changes the color of digs display for yourself; leave empty to reset', ' \n',
+        '%color% /%app_name% settings stat_color <hex_color>', 'f ｜', 'g Changes the color of the scoreboard name for everyone; leave empty to reset ', 'f *', '^g For server operators only', ' \n'
     ],
     [
-        '%color% /%app_name% settings combined_stats list ', 'f ｜ ', 'g Lists combined statistics ', ' \n',
-        '%color% /%app_name% settings combined_stats info <combined_stat> ', 'f ｜ ', 'g Prints the entries of a combined statistic ', ' \n',
-        '%color% /%app_name% settings combined_stats create <name> <display_name> <category> <entries> ', 'f ｜ ', 'g Creates a combined statistic ', 'f *', '^g For server operators only', ' \n',
-        '%color% /%app_name% settings combined_stats delete <combined_stat> ', 'f ｜ ', 'g Deletes a combined statistic ', 'f *', '^g For server operators only', ' \n\n',
-        '%color% /%app_name% carousel start ', 'f ｜ ', 'g Starts a carousel of statistics', ' \n',
-        '%color% /%app_name% carousel stop ', 'f ｜ ', 'g Stops the carousel', ' \n',
-        '%color% /%app_name% carousel interval [<seconds>] ', 'f ｜ ', 'g Gets or sets the interval of the carousel', ' \n',
-        '%color% /%app_name% carousel list ', 'f ｜ ', 'g Lists carousel entries', ' \n',
-        '%color% /%app_name% carousel add <category> <entry> ', 'f ｜ ', 'g Adds an entry to the carousel', ' \n',
-        '%color% /%app_name% carousel remove <index> ', 'f ｜ ', 'g Removes an entry from the carousel', ' \n',
+        '%color% /%app_name% settings combined_stats list', 'f ｜', 'g Lists combined statistics ', ' \n',
+        '%color% /%app_name% settings combined_stats info <combined_stat>', 'f ｜', 'g Prints the entries of a combined statistic ', ' \n',
+        '%color% /%app_name% settings combined_stats create <name> <display_name> <category> <entries>', 'f ｜', 'g Creates a combined statistic ', 'f *', '^g For server operators only', ' \n',
+        '%color% /%app_name% settings combined_stats delete <combined_stat>', 'f ｜', 'g Deletes a combined statistic ', 'f *', '^g For server operators only', ' \n\n',
+        '%color% /%app_name% carousel start', 'f ｜', 'g Starts a carousel of statistics', ' \n',
+        '%color% /%app_name% carousel stop', 'f ｜', 'g Stops the carousel', ' \n',
+        '%color% /%app_name% carousel interval [<seconds>]', 'f ｜', 'g Gets or sets the interval of the carousel', ' \n',
+        '%color% /%app_name% carousel list', 'f ｜', 'g Lists carousel entries', ' \n',
+        '%color% /%app_name% carousel add <category> <entry>', 'f ｜', 'g Adds an entry to the carousel', ' \n',
+        '%color% /%app_name% carousel remove <index>', 'f ｜', 'g Removes an entry from the carousel', ' \n',
     ]
 ];
 
 __config() -> {
     'resources' -> [
         {
-            'source' -> str('https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/display_names/%d.json', system_info('game_major_target')),
+            'source' -> str('https://raw.githubusercontent.com/CommandLeo/scarpet/main/resources/stat/display_names/%s.json', join('.', slice(split('\\.', system_info('game_version')), 0, 2))),
             'target' -> 'display_names.json'
         }
     ],
@@ -229,7 +224,7 @@ __config() -> {
         },
         'misc_stat' -> {
             'type' -> 'term',
-            'options' -> keys(global_misc_stats),
+            'options' -> keys(read_file('display_names', 'json'):'misc') || [''],
             'case_sensitive' -> false
         },
         'extra_stat' -> {
@@ -259,44 +254,40 @@ __config() -> {
         'items' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                i = args:'items';
-                items = split(' ', i);
-                if(length(items) && slice(i, -1) != ' ', delete(items, -1));
-                items_string = join(' ', items);
-                return(if(items, map(global_item_list, str('%s %s', items_string, _)), global_item_list));
+                input = args:'items';
+                items = split('\\s+', input);
+                item_string = join(' ', items);
+                return(if(items, map(global_item_list, str('%s %s', item_string, _)), global_item_list));
             ),
             'case_sensitive' -> false
         },    
         'blocks' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                b = args:'blocks';
-                blocks = split(' ', b);
-                if(length(blocks) && slice(b, -1) != ' ', delete(blocks, -1));
-                blocks_string = join(' ', blocks);
-                return(if(blocks, map(global_block_list, str('%s %s', blocks_string, _)), global_block_list));
+                input = args:'blocks';
+                blocks = split('\\s+', input);
+                block_string = join(' ', blocks);
+                return(if(blocks, map(global_block_list, str('%s %s', block_string, _)), global_block_list));
             ),
             'case_sensitive' -> false
         },    
         'entities' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                e = args:'entities';
-                entities = split(' ', e);
-                if(length(entities) && slice(e, -1) != ' ', delete(entities, -1));
-                entities_string = join(' ', entities);
-                return(if(entities, map(global_entity_list, str('%s %s', entities_string, _)), global_entity_list));
+                input = args:'entities';
+                entities = split('\\s+', input);
+                entity_string = join(' ', entities);
+                return(if(entities, map(global_entity_list, str('%s %s', entity_string, _)), global_entity_list));
             ),
             'case_sensitive' -> false
         },    
         'misc_entries' -> {
             'type' -> 'text',
             'suggester' -> _(args) -> (
-                m = args:'misc_entries';
-                misc_entries = split(' ', m);
-                if(length(misc_entries) && slice(m, -1) != ' ', delete(misc_entries, -1));
-                misc_entries_string = join(' ', misc_entries);
-                return(if(misc_entries, map(global_misc_stats, str('%s %s', misc_entries_string, _)), keys(global_misc_stats)));
+                input = args:'misc_entries';
+                misc_entries = split('\\s+', input);
+                misc_entry_string = join(' ', misc_entries);
+                return(if(misc_entries, map(global_misc_entry_list, str('%s %s', misc_entry_string, _)), global_misc_entry_list));
             ),
             'case_sensitive' -> false
         },    
@@ -339,18 +330,24 @@ __config() -> {
     'scope' -> 'global'
 };
 
+display_names = read_file('display_names', 'json');
+global_misc_stats = display_names:'misc';
+global_block_names = display_names:'blocks';
+global_item_names = display_names:'items';
+global_entity_names = display_names:'entities';
+
 // HELPER FUNCTIONS
 
 _error(error) -> exit(print(format(str('r %s', error))));
 
 _validateHex(string) -> (
     hex = upper(string)~'^#?([0-9A-F]{6}|[0-9A-F]{3})$';
-    if(length(hex) == 3, hex = replace(hex, '(.)', '$1$1'));
+    if(length(hex) == 3, hex = replace(hex, '(.)', '$1' * 2));
     return(hex);
 );
 
 _parseCombinedStatFile(name) -> (
-    file = read_file('combined/' + name, 'text');
+    file = read_file(str('combined/%s', name), 'text');
     display_name = file:0;
     category = if(length(file) > 1, file:1);
     loop(2, delete(file, 0));
@@ -375,13 +372,13 @@ calculateTotal() -> (
 
 getDisplayName(category, event) -> (
     return(str(global_categories:category, if(
-        category == 'used' || category == 'broken' || category == 'crafted' || category == 'dropped' || category == 'picked_up', global_item_names, 
-        category == 'mined', global_block_names,
-        category == 'killed' || category == 'killed_by', global_entity_names,
-        category == 'custom', global_misc_stats,
-        category == 'extra', global_extra_stats,
-        category == 'digs', global_dig_data
-    ):event || event));
+        category == 'used' || category == 'broken' || category == 'crafted' || category == 'dropped' || category == 'picked_up', global_item_names:event || global_block_names:event, 
+        category == 'mined', global_block_names:event,
+        category == 'killed' || category == 'killed_by', global_entity_names:event,
+        category == 'custom', global_misc_stats:event,
+        category == 'extra', global_extra_stats:event,
+        category == 'digs', global_dig_data:event
+    ) || event));
 );
 
 getStat(player, category, event) -> (
@@ -416,12 +413,12 @@ displayDigs(player) -> (
 menu() -> (
     texts = [
         'fs ' + ' ' * 80, ' \n',
-        '#FED330b Statistic Display ', 'g by ', '%color%b CommandLeo', '^g https://github.com/CommandLeo', ' \n\n',
+        '%color%b Statistic Display ', 'g by ', '%color%b CommandLeo', '^g https://github.com/CommandLeo', ' \n\n',
         'g An app to easily display statistics on the scoreboard.', '  \n',
         'g Run ', '%color% /%app_name% help', '!/%app_name% help', '^g Click to run the command', 'g  to see a list of all the commands.', '  \n',
         'fs ' + ' ' * 80
     ];
-    replacement_map = {'%app_name%' -> global_app_name, '%color%' -> '#FFEE44'};
+    replacement_map = {'%app_name%' -> system_info('app_name'), '%color%' -> '#FFEE44'};
     print(format(map(texts, reduce(pairs(replacement_map), replace(_a, ..._), _))));
 );
 
@@ -431,8 +428,8 @@ help(page) -> (
     page = page - 1;
     previous_page = (page - 1) % length + 1;
     next_page = ((page + 1) % length + 1);
-    texts = ['fs ' + ' ' * 80, ' \n', ...global_help_pages:page, 'fs ' + ' ' * 31, '  ', 'fb «', '^g Previous page', '!/%app_name% help ' + previous_page, str('g \ Page %d/%d ', page + 1, length), 'fb »', '^g Next page', '!/%app_name% help ' + next_page, '  ', 'fs ' + ' ' * 31];
-    replacement_map = {'%app_name%' -> global_app_name, '%color%' -> '#FFEE44', '%default_dig%' -> global_default_dig};
+    texts = ['fs ' + ' ' * 80, ' \n', ...global_help_pages:page, 'fs ' + ' ' * 31, '  ', 'fb «', '^g Previous page', '!/%app_name% help ' + previous_page, str('g \ Page %d/%d ', page + 1, length), 'fb »', '^g Next page', '!/%app_name% help ' + next_page, '  ', 'fs ' + ' ' * 30];
+    replacement_map = {'%app_name%' -> system_info('app_name'), '%color%' -> '#FFEE44', '%default_dig%' -> global_default_dig};
     print(format(map(texts, reduce(pairs(replacement_map), replace(_a, ..._), _))));
 );
 
@@ -563,14 +560,14 @@ listCombinedStats() -> (
     if(!files, _error('There are no combined stats available'));
 
     combined_stats = map(files, slice(_, length('combined') + 1));
-    texts = reduce(combined_stats, [..._a, if(_i == 0, '', 'g , '), str('#FFEE44 %s', _), str('?/%s settings combined_stats info %s', global_app_name, _)], ['f » ', 'g Available combined stats: ']);
+    texts = reduce(combined_stats, [..._a, if(_i == 0, '', 'g , '), str('#FFEE44 %s', _), str('?/%s settings combined_stats info %s', system_info('app_name'), _)], ['f » ', 'g Available combined stats: ']);
     print(format(texts));
 );
 
 combinedStatInfo(combined_stat) -> (
     if(list_files('combined', 'text')~str('combined/%s', combined_stat) == null, _error(str('The combined stat %s doesn\'t exist', combined_stat)));
     [display_name, category, entries] = _parseCombinedStatFile(combined_stat);
-    texts = reduce(entries,  [..._a, ' \n    ', str('g %s.%s', category, _), str('?/%s %s %s', global_app_name, if(category == 'custom', 'misc', category), _)], ['f » ', str('#FFEE44 %s', display_name), str('^g %s', combined_stat), 'f ｜', 'g Entries:']);
+    texts = reduce(entries,  [..._a, ' \n    ', str('g %s.%s', category, _), str('?/%s %s %s', system_info('app_name'), if(category == 'custom', 'misc', category), _)], ['f » ', str('#FFEE44 %s', display_name), str('^g %s', combined_stat), 'f ｜', 'g Entries:']);
     print(format(texts));
 );
 
@@ -634,7 +631,7 @@ deleteCombinedStat(combined_stat, confirmation) -> (
     if(player()~'permission_level' == 0, _error('You must be an operator to run this command'));
     filename = str('combined/%s', combined_stat);
     if(list_files('combined', 'text')~filename == null, _error(str('The combined stat %s doesn\'t exist', combined_stat)));
-    if(!confirmation, exit(print(format('f » ', 'g Do you really want to delete the ', str('#FFEE44 %s', combined_stat), 'g  combined stat? ', 'lb YES', '^l Click to confirm', str('!/%s settings combined_stats delete %s confirm', global_app_name, combined_stat)))));
+    if(!confirmation, exit(print(format('f » ', 'g Do you really want to delete the ', str('#FFEE44 %s', combined_stat), 'g  combined stat? ', 'lb YES', '^l Click to confirm', str('!/%s settings combined_stats delete %s confirm', system_info('app_name'), combined_stat)))));
     delete_file(filename, 'text');
     print(format('f » ', 'g Successfully deleted the ', str('#FFEE44 %s', combined_stat), 'g  combined stat'));
 );
@@ -684,7 +681,7 @@ removeCarouselEntry(index) -> (
 listCarouselEntries() -> (
     entries = global_carousel_data:'entries';
     if(!entries, _error('No entries to show, the carousel is empty'));
-    print(format(reduce(entries, [..._a, ' \n  ', '#EB4D4Bb ❌', '^r Remove entry', str('?/%s carousel remove %d', global_app_name, _i), '  ', str('g %s.%s', _)], ['f » ', 'g Carousel entries: ', '#26DE81b (+)', '^l Add more entries', str('?/%s carousel add ', global_app_name)])));
+    print(format(reduce(entries, [..._a, ' \n  ', '#EB4D4Bb ❌', '^r Remove entry', str('?/%s carousel remove %d', system_info('app_name'), _i), '  ', str('g %s.%s', _)], ['f » ', 'g Carousel entries: ', '#26DE81b (+)', '^l Add more entries', str('?/%s carousel add ', system_info('app_name'))])));
 );
 
 carousel(entries, i) -> (
