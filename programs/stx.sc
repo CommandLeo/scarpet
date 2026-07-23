@@ -1359,7 +1359,7 @@ setExtraContainersModeSetting(extra_containers_mode) -> (
             print(format('f » ', 'g The mode to fill extra containers has been reset to its default value')),
 
         // else
-            if(global_extra_containers_mode_options~extra_container_mode == null, _error(global_error_messages:'INVALID_EXTRA_CONTAINERS_MODE'));
+            if(global_extra_containers_mode_options~extra_containers_mode == null, _error(global_error_messages:'INVALID_EXTRA_CONTAINERS_MODE'));
 
             global_settings:'extra_containers_mode' = extra_containers_mode;
             print(format('f » ', 'g The mode to fill extra containers has been set to ', str('%sb %s', global_extra_containers_mode_options:extra_containers_mode, upper(extra_containers_mode))));
